@@ -19,6 +19,7 @@ use Illuminate\Notifications\Notifiable;
     'role',
     'kelas_jabatan',
     'telepon',
+    'nik',
     'suspended_until',
     'alasan_suspend',
 ])]

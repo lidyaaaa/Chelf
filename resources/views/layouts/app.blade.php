@@ -160,6 +160,7 @@
                     <div id="book-delete-blocked-toast-message" class="toast-body"></div>
                 </div>
             </div>
+        @include('layouts.partials.book-delete-confirmation-modal')
         @endif
 
         @include('layouts.partials.logout-confirmation-modal')
@@ -274,6 +275,31 @@
                 }
             });
         }
+
+        let bookDeleteFormToSubmit = null;
+        const bookDeleteConfirmTitle = document.getElementById('bookDeleteConfirmTitle');
+
+        document.addEventListener('click', function (event) {
+            const trigger = event.target.closest('.book-delete-confirm-trigger');
+            if(!trigger) {
+                return;
+            }
+            
+            bookDeleteFormToSubmit = trigger.closest('form');
+            if (bookDeleteConfirmTitle) {
+                bookDeleteConfirmTitle.textContent = trigger.dataset.bookTitle || 'ini';
+            }
+        });
+
+        const confirmBookDeleteButton = document.getElementById('confirmBookDeleteButton');
+        if (confirmBookDeleteButton) {
+            confirmBookDeleteButton.addEventListener('click', function () {
+                if (bookDeleteFormToSubmit) {
+                    bookDeleteFormToSubmit.submit();
+                }
+            });
+        }
+       
 
         window.addEventListener('pageshow', function (event) {
             if (event.persisted || (window.performance && window.performance.getEntriesByType('navigation')[0]?.type === 'back_forward')) {

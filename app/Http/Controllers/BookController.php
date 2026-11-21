@@ -37,6 +37,7 @@ class BookController extends Controller
                         });
                 });
             })
+
             ->when($request->filled('category_id'), function ($query) use ($request): void {
                 $query->where('category_id', $request->category_id);
             })
@@ -45,9 +46,18 @@ class BookController extends Controller
             })
             ->when($request->availability === 'out_of_stock', function ($query): void {
                 $query->where('stok', '<=', 0);
-            })
-            ->latest()
-            ->latest('id');
+            });
+
+        if ($request->sort === 'termurah'){
+            $query->orderBy('harga', 'asc');
+        }else if($request->sort === 'termahal'){
+            $query->orderBy('harga', 'desc');
+        }else if($request->sort === 'az'){
+            $query->orderBy('judul', 'asc');
+        }
+        else {
+            $query->latest()->latest('id');
+        }
 
         if (! auth()->check()) {
             $guestBooks = $query->limit(8)->get();

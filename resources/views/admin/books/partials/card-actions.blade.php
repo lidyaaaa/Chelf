@@ -17,17 +17,21 @@
     </a>
     @if($deletionReasons)
         <button type="button" class="btn btn-soft-secondary btn-sm px-2 book-delete-blocked-action"
-            aria-label="Hapus buku dinonaktifkan"
-            aria-disabled="true"
+            aria-label="Hapus buku dinonaktifkan" aria-disabled="true"
             data-delete-blocked-reason="{{ implode(' ', $deletionReasons) }}">
             <i class="bi bi-trash3"></i>
         </button>
     @else
-        <form action="{{ route('books.destroy', $book) }}" method="POST" class="d-inline"
-            onsubmit="return confirm('Yakin ingin menghapus buku {{ addslashes($book->judul) }}?')">
+        <form action="{{ route('books.destroy', $book) }}" method="POST" class="d-inline">
             @csrf
             @method('DELETE')
-            <button class="btn btn-soft-danger btn-sm px-2" title="Hapus Buku">
+            <button
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#bookDeleteConfirmationModal"
+                data-book-title="{{ $book->judul }}"
+                class="btn btn-soft-danger btn-sm px-2 book-delete-confirm-trigger"
+                title="Hapus Buku">
                 <i class="bi bi-trash3"></i>
             </button>
         </form>

@@ -55,6 +55,18 @@
                         @error('telepon')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small text-slate-700">NIK</label>
+                        <input type="text" name="nik"
+                            class="form-control @error('nik') is-invalid @enderror"
+                            placeholder="contoh: 317xxxxxxxxxxxx"
+                            inputmode="numeric" pattern="\d{16}" minlength="16" maxlength="16"
+                            oninput="this.value = this.value.replace(/\D/g, '')"
+                            title="NIK harus 16 digit"
+                            value="{{ old('nik', $user->nik) }}">
+                        @error('nik')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
                     <div class="border-top pt-3 mb-3">
                         <h6 class="fw-bold text-slate-900 mb-1">Ganti Password (Opsional)</h6>
                         <p class="text-muted small mb-3">Kosongkan jika tidak ingin mengubah password akun Anda.</p>

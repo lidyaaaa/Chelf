@@ -57,6 +57,7 @@
 
         {{-- Search Bar --}}
         <form id="book-search-form" method="GET" action="{{ route('books.index') }}">
+            
             @if(request()->filled('category_id'))
                 <input type="hidden" name="category_id" value="{{ request('category_id') }}">
             @endif
@@ -70,7 +71,7 @@
                         <div class="d-flex align-items-center ps-2">
                             <i class="bi bi-search text-primary fs-5 me-2"></i>
                             <input id="book-search-input" type="text" name="search" class="form-control ps-1"
-                                placeholder="Ketik judul buku, nama penulis, penerbit, atau nomor ISBN..."
+                                placeholder="Ketik judul buku"
                                 value="{{ request('search') }}" autocomplete="off" aria-label="Cari buku">
                         </div>
                     </div>
@@ -133,6 +134,13 @@
                     <span class="status-dot bg-danger"></span> Stok Habis
                 </a>
             </div>
+
+            <select name="sort" form="book-search-form" class="form-select" onchange="this.form.submit()">
+                <option value="terbaru" {{ request('sort') === 'terbaru' ? 'selected' : '' }}>Terbaru</option>
+                <option value="termurah" {{ request('sort') === 'termurah' ? 'selected' : '' }}>Harga Termurah</option>
+                <option value="termahal" {{ request('sort') === 'termahal' ? 'selected' : '' }}>Harga Termahal</option>
+                <option value="az" {{ request('sort') === 'az' ? 'selected' : '' }}>A-Z</option>
+            </select>
         </div>
     </div>
 
@@ -166,7 +174,7 @@
                 } else {
                     url.searchParams.delete('search');
                 }
-                url.searchParams.delete('page');
+                url.searchParams.delete('page') ;
                 chip.href = url.toString();
             });
         };

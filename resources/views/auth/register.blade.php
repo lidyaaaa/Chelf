@@ -35,6 +35,18 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label fw-medium">NIK</label>
+                        <input type="text" name="nik"
+                            class="form-control @error('nik') is-invalid @enderror"
+                            placeholder="contoh: 317xxxxxxxxxxxx"
+                            inputmode="numeric" pattern="\d{16}" minlength="16" maxlength="16"
+                            oninput="this.value = this.value.replace(/\D/g, '')"
+                            title="NIK harus 16 digit"
+                            value="{{ old('nik') }}" required>
+                        @error('nik')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label fw-medium">Email</label>
                         <input type="email" name="email" maxlength="80"
                             class="form-control @error('email') is-invalid @enderror"

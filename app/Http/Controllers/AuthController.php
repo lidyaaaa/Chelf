@@ -21,9 +21,12 @@ class AuthController extends Controller
             'name' => 'required|string|max:50',
             'email' => 'required|email|max:80|unique:users,email',
             'telepon' => 'required|digits_between:10,13',
+            'nik' => 'required|digits:16|unique:users,nik',
             'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->numbers()->symbols()],
         ], [
             'telepon.digits_between' => 'Nomor telepon harus berupa angka 10–13 digit.',
+            'nik.digits' => 'NIK harus 16 digit.',
+            'nik.unique' => 'NIK sudah digunakan.',
             'password.min' => 'Password minimal harus 8 karakter.',
             'password.letters' => 'Password harus mengandung minimal satu huruf.',
             'password.numbers' => 'Password harus mengandung minimal satu angka.',
@@ -36,6 +39,7 @@ class AuthController extends Controller
             'email' => $data['email'],
             'kelas_jabatan' => 'Pelanggan Umum',
             'telepon' => $data['telepon'],
+            'nik' => $data['nik'],
             'password' => Hash::make($data['password']),
             'role' => 'user',
         ]);
@@ -53,7 +57,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'name' => 'required|string|max:50',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
@@ -66,9 +70,9 @@ class AuthController extends Controller
 
         return back()
             ->withErrors([
-                'name' => 'Nama Lengkap atau password salah.',
+                'email' => 'Email atau password salah.',
             ])
-            ->onlyInput('name');
+            ->onlyInput('email');
     }
 
     public function logout(Request $request)

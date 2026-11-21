@@ -29,10 +29,13 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:50',
             'telepon' => 'nullable|digits_between:10,13',
+            'nik' => 'nullable|digits:16|unique:users,nik,' . $user->id,
             'password' => ['nullable', 'string', 'confirmed', Password::min(8)->letters()->numbers()->symbols()],
         ], [
             'name.max' => 'Nama lengkap maksimal 50 karakter.',
             'telepon.digits_between' => 'Nomor telepon harus berupa angka 10–13 digit.',
+            'nik.digits' => 'NIK harus 16 digit.',
+            'nik.unique' => 'NIK sudah digunakan.',
             'password.min' => 'Password baru minimal harus 8 karakter.',
             'password.letters' => 'Password baru harus mengandung minimal satu huruf.',
             'password.numbers' => 'Password baru harus mengandung minimal satu angka.',
@@ -43,6 +46,7 @@ class UserController extends Controller
         $payload = [
             'name' => trim($data['name']),
             'telepon' => $data['telepon'] ?? null,
+            'nik' => $data['nik'] ?? null,
         ];
 
         if (! empty($data['password'])) {
@@ -70,7 +74,8 @@ class UserController extends Controller
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
                         ->orWhere('nomor_anggota', 'like', "%{$search}%")
-                        ->orWhere('telepon', 'like', "%{$search}%");
+                        ->orWhere('telepon', 'like', "%{$search}%")
+                        ->orWhere('nik', 'like', "%{$search}%");
                 });
             })
             ->latest()

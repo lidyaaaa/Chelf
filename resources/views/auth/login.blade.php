@@ -20,9 +20,9 @@
                 @csrf
 
                 <div class="mb-3">
-                    <label class="form-label small fw-bold text-slate-700">Nama Lengkap</label>
-                    <input type="name" name="name" class="form-control"
-                        placeholder="Contoh: Budi Santoso" value="{{ old('Name') }}" required>
+                    <label class="form-label small fw-bold text-slate-700">Email</label>
+                    <input type="email" name="email" class="form-control"
+                        placeholder="Contoh: budi@santoso.com" value="{{ old('email') }}" required>
                 </div>
 
                 <div class="mb-4">
