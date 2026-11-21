@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Book;
 use App\Models\Category;
 use App\Models\Transaction;
+use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -12,14 +13,12 @@ class BookController extends Controller
 {
     /**
      * Halaman Katalog Bookstore
-     * Mendukung pencarian cepat (Judul, Penulis, Kategori, ISBN, Kode Rak)
+     * Mendukung pencarian cepat (Judul, Penulis, Kategori, ISBN)
      * serta filter ketersediaan stok.
      */
     public function index(Request $request)
     {
-        $categories = Category::withCount('books')->orderBy('nama')->get();
-
-        $books = Book::query()
+        $query = Book::query()
             ->with('category')
             ->withCount('carts')
             ->withSum(['transactionItems as terjual_count' => function ($q): void {
@@ -32,7 +31,6 @@ class BookController extends Controller
                         ->orWhere('penulis', 'like', "%{$search}%")
                         ->orWhere('penerbit', 'like', "%{$search}%")
                         ->orWhere('isbn', 'like', "%{$search}%")
-                        ->orWhere('call_number', 'like', "%{$search}%")
                         ->orWhereHas('category', function ($catQuery) use ($search): void {
                             $catQuery->where('nama', 'like', "%{$search}%")
                                 ->orWhere('kode_ddc', 'like', "%{$search}%");
@@ -49,8 +47,32 @@ class BookController extends Controller
                 $query->where('stok', '<=', 0);
             })
             ->latest()
-            ->paginate(12)
-            ->withQueryString();
+            ->latest('id');
+
+        if (! auth()->check()) {
+            $guestBooks = $query->limit(8)->get();
+            $books = new \Illuminate\Pagination\LengthAwarePaginator(
+                $guestBooks,
+                $guestBooks->count(),
+                8,
+                1,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+        } else {
+            $books = $query
+                ->paginate(8)
+                ->onEachSide(1)
+                ->withQueryString();
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'html' => view('books.partials.results', compact('books'))->render(),
+                'total' => $books->total(),
+            ]);
+        }
+
+        $categories = Category::withCount('books')->orderBy('nama')->get();
 
         return view('books.index', compact('books', 'categories'));
     }
@@ -65,26 +87,42 @@ class BookController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'category_id' => 'nullable|exists:categories,id',
-            'kategori_baru' => 'nullable|string|max:100',
-            'judul' => 'required|string|max:255|unique:books,judul',
-            'isbn' => 'nullable|string|max:30|unique:books,isbn',
-            'call_number' => 'nullable|string|max:50',
-            'penulis' => 'required|string|max:255',
-            'penerbit' => 'nullable|string|max:255',
+            'category_id' => 'required|exists:categories,id',
+            'kategori_baru' => 'nullable|string|max:25',
+            'judul' => 'required|string|max:100|unique:books,judul',
+            'isbn' => [
+                'bail',
+                'required',
+                'string',
+                'max:17',
+                'regex:/^[0-9]+(?:-[0-9]+)*$/',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $normalizedIsbn = (string) preg_replace('/\D/', '', (string) $value);
+
+                    $isDuplicate = Book::query()
+                        ->whereRaw("REPLACE(REPLACE(isbn, '-', ''), ' ', '') = ?", [$normalizedIsbn])
+                        ->exists();
+
+                    if ($isDuplicate) {
+                        $fail('Buku dengan nomor ISBN ini sudah terdaftar di database.');
+                    }
+                },
+            ],
+            'penulis' => 'required|string|max:60',
+            'penerbit' => 'required|string|max:60',
             'tahun_terbit' => [
-                'nullable',
+                'required',
                 'integer',
                 'min:1000',
                 'max:'.date('Y'),
             ],
             'harga' => 'required|integer|min:0',
             'stok' => 'required|integer|min:0',
-            'sinopsis' => 'nullable|string|max:2000',
-            'cover' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'sinopsis' => 'required|string|max:1000',
+            'cover' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
         ], [
             'judul.unique' => 'Buku dengan judul ini sudah ada di dalam katalog/database.',
-            'isbn.unique' => 'Buku dengan nomor ISBN ini sudah terdaftar di database.',
+            'isbn.regex' => 'Nomor ISBN hanya boleh berisi angka dan tanda hubung.',
             'stok.min' => 'Stok buku tidak boleh bernilai minus (minimal 0).',
             'harga.min' => 'Harga buku tidak boleh bernilai minus.',
         ]);
@@ -124,12 +162,11 @@ class BookController extends Controller
     {
         $data = $request->validate([
             'category_id' => 'nullable|exists:categories,id',
-            'kategori_baru' => 'nullable|string|max:100',
-            'judul' => 'required|string|max:255|unique:books,judul,'.$book->id,
-            'isbn' => 'nullable|string|max:30|unique:books,isbn,'.$book->id,
-            'call_number' => 'nullable|string|max:50',
-            'penulis' => 'required|string|max:255',
-            'penerbit' => 'nullable|string|max:255',
+            'kategori_baru' => 'nullable|string|max:25',
+            'judul' => 'required|string|max:100|unique:books,judul,'.$book->id,
+            'isbn' => 'nullable|string|max:17|unique:books,isbn,'.$book->id,
+            'penulis' => 'required|string|max:60',
+            'penerbit' => 'nullable|string|max:60',
             'tahun_terbit' => [
                 'nullable',
                 'integer',
@@ -138,7 +175,7 @@ class BookController extends Controller
             ],
             'harga' => 'required|integer|min:0',
             'stok' => 'required|integer|min:0',
-            'sinopsis' => 'nullable|string|max:2000',
+            'sinopsis' => 'nullable|string|max:1000',
             'cover' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ], [
             'judul.unique' => 'Buku dengan judul ini sudah ada di dalam katalog/database.',
@@ -179,11 +216,20 @@ class BookController extends Controller
     }
 
     /**
-     * Hapus buku (Admin).
-     * Aturan Bisnis: Buku TIDAK BISA dihapus apabila sedang berada di keranjang belanja user.
+     * Buku hanya dapat dihapus saat stoknya kosong dan tidak berada di keranjang pengguna.
      */
     public function destroy(Book $book)
     {
+        if ($book->stok > 0) {
+            return back()->withErrors([
+                'book' => sprintf(
+                    'Buku "%s" tidak dapat dihapus karena masih memiliki stok sebanyak %d eksemplar.',
+                    $book->judul,
+                    $book->stok
+                ),
+            ]);
+        }
+
         if ($book->isInAnyCart()) {
             return back()->withErrors([
                 'book' => sprintf(

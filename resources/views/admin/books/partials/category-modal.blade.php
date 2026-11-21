@@ -22,13 +22,16 @@
                         </span>
                     </div>
                     <div class="col-md-4">
-                        <input type="text" name="nama" class="form-control form-control-sm" placeholder="Nama Kategori * (mis: Novel, Teknologi)" required>
+                        <input type="text" name="nama" class="form-control form-control-sm"
+                            placeholder="Nama Kategori * (maks 25)" maxlength="25" required>
                     </div>
                     <div class="col-md-3">
-                        <input type="text" name="kode_ddc" class="form-control form-control-sm" placeholder="Kode Rak (opsional)">
+                        <input type="text" name="kode_ddc" class="form-control form-control-sm"
+                            placeholder="Kode Rak (maks 15)" maxlength="15">
                     </div>
                     <div class="col-md-3">
-                        <input type="text" name="deskripsi" class="form-control form-control-sm" placeholder="Keterangan singkat (opsional)">
+                        <input type="text" name="deskripsi" class="form-control form-control-sm"
+                            placeholder="Keterangan singkat (maks 100)" maxlength="100">
                     </div>
                     <div class="col-md-2">
                         <button class="btn btn-primary btn-sm w-100">
@@ -61,13 +64,16 @@
                                             @csrf
                                             @method('PUT')
                                             <div class="col-md-4">
-                                                <input type="text" name="nama" value="{{ $cat->nama }}" class="form-control form-control-sm fw-bold text-slate-900" required>
+                                                <input type="text" name="nama" value="{{ $cat->nama }}" maxlength="25"
+                                                    class="form-control form-control-sm fw-bold text-slate-900" required>
                                             </div>
                                             <div class="col-md-2">
-                                                <input type="text" name="kode_ddc" value="{{ $cat->kode_ddc }}" class="form-control form-control-sm font-monospace" placeholder="Kode">
+                                                <input type="text" name="kode_ddc" value="{{ $cat->kode_ddc }}" maxlength="15"
+                                                    class="form-control form-control-sm font-monospace" placeholder="Kode">
                                             </div>
                                             <div class="col-md-3">
-                                                <input type="text" name="deskripsi" value="{{ $cat->deskripsi }}" class="form-control form-control-sm text-slate-600" placeholder="Keterangan">
+                                                <input type="text" name="deskripsi" value="{{ $cat->deskripsi }}" maxlength="100"
+                                                    class="form-control form-control-sm text-slate-600" placeholder="Keterangan">
                                             </div>
                                             <div class="col-md-1 text-center">
                                                 <span class="badge bg-secondary bg-opacity-10 text-slate-700">{{ $bookCount }}</span>
@@ -77,16 +83,16 @@
                                                     <i class="bi bi-check2"></i> Simpan
                                                 </button>
                                                 @if($catHasBooks)
-                                                    <button type="button" class="btn btn-soft-secondary btn-sm btn-icon"
+                                                    <button type="button" class="btn btn-soft-secondary btn-sm btn-icon" disabled
                                                         title="Tidak bisa dihapus: masih ada {{ $bookCount }} buku yang terhubung dengan kategori ini"
-                                                        onclick="alert('Kategori {{ addslashes($cat->nama) }} tidak dapat dihapus karena masih terhubung dengan {{ $bookCount }} buku!');">
-                                                        <i class="bi bi-lock-fill text-muted"></i>
+                                                        aria-label="Hapus kategori dinonaktifkan">
+                                                        <i class="bi bi-trash3"></i>
                                                     </button>
                                                 @elseif($catHasCart)
-                                                    <button type="button" class="btn btn-soft-secondary btn-sm btn-icon"
+                                                    <button type="button" class="btn btn-soft-secondary btn-sm btn-icon" disabled
                                                         title="Tidak bisa dihapus: buku di kategori ini sedang ada di keranjang user"
-                                                        onclick="alert('Kategori {{ addslashes($cat->nama) }} tidak dapat dihapus karena buku di dalamnya sedang berada di keranjang belanja pengguna!');">
-                                                        <i class="bi bi-lock-fill text-warning"></i>
+                                                        aria-label="Hapus kategori dinonaktifkan">
+                                                        <i class="bi bi-trash3"></i>
                                                     </button>
                                                 @else
                                                     <button type="button" class="btn btn-soft-danger btn-sm btn-icon" title="Hapus Kategori"

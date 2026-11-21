@@ -79,29 +79,38 @@
                     <span>Daftar Pengguna</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center gap-2 {{ request()->routeIs('profile.*') ? 'active' : 'text-slate-700' }}"
+                   href="{{ route('profile.edit') }}">
+                    <i class="bi bi-person-gear"></i>
+                    <span>Edit Profil</span>
+                </a>
+            </li>
         </ul>
     </div>
 
     <!-- Admin Profile & Logout -->
     <div class="border-top pt-3 mt-auto">
         <div class="d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center gap-2 overflow-hidden">
+            <a href="{{ route('profile.edit') }}" class="d-flex align-items-center gap-2 overflow-hidden text-decoration-none" title="Edit Profil Admin">
                 <span class="avatar-chip flex-shrink-0">
                     {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                 </span>
                 <div class="lh-sm text-truncate">
-                    <div class="fw-bold text-slate-900 text-truncate" style="font-size: 0.85rem;" title="{{ auth()->user()->name }}">
+                    <div class="fw-bold text-slate-900 text-truncate" style="font-size: 0.85rem;">
                         {{ auth()->user()->name }}
                     </div>
                     <div class="text-slate-500 font-monospace" style="font-size: 0.72rem;">
                         {{ auth()->user()->nomor_anggota }}
                     </div>
                 </div>
-            </div>
+            </a>
 
             <form action="{{ route('logout') }}" method="POST" class="ms-2 flex-shrink-0">
                 @csrf
-                <button class="btn btn-soft-danger btn-sm rounded-circle p-2" title="Keluar / Logout" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
+                <button type="button" class="btn btn-soft-danger btn-sm rounded-circle p-2 logout-confirm-trigger"
+                    data-bs-toggle="modal" data-bs-target="#logoutConfirmationModal"
+                    title="Keluar / Logout" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
                     <i class="bi bi-power"></i>
                 </button>
             </form>

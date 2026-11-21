@@ -18,16 +18,17 @@ class CartController extends Controller
 
         $cartItems = Cart::with('book.category')
             ->where('user_id', auth()->id())
-            ->latest()
-            ->get();
+            ->latest('id')
+            ->paginate(10)
+            ->withQueryString();
 
         $addresses = UserAddress::where('user_id', auth()->id())
             ->orderByDesc('is_utama')
             ->latest()
             ->get();
 
-        $totalItem = $cartItems->sum('jumlah');
-        $totalHarga = $cartItems->sum(fn (Cart $item): int => $item->subtotal);
+        $totalItem = $cartItems->getCollection()->sum('jumlah');
+        $totalHarga = $cartItems->getCollection()->sum(fn (Cart $item): int => $item->subtotal);
 
         return view('user.cart.index', compact('cartItems', 'addresses', 'totalItem', 'totalHarga'));
     }

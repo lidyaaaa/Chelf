@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Book;
+use App\Models\Category;
 use App\Models\Message;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ChatAndBookDuplicationTest extends TestCase
@@ -16,45 +19,85 @@ class ChatAndBookDuplicationTest extends TestCase
     public function test_admin_cannot_add_duplicate_book_by_title_or_isbn(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
+        $category = Category::create(['nama' => 'Novel']);
+        Storage::fake('public');
 
         Book::create([
+            'category_id' => $category->id,
             'judul' => 'Laskar Pelangi',
             'isbn' => '978-979-3062-79-2',
+            'call_number' => 'NOV-001',
             'penulis' => 'Andrea Hirata',
             'penerbit' => 'Bentang Pustaka',
             'tahun_terbit' => 2005,
             'harga' => 85000,
             'stok' => 10,
             'total_koleksi' => 10,
+            'sinopsis' => 'Kisah persahabatan dan pendidikan.',
         ]);
 
         // Attempt 1: duplicate judul
         $response1 = $this->actingAs($admin)->post(route('books.store'), [
+            'category_id' => $category->id,
             'judul' => 'Laskar Pelangi',
-            'isbn' => '978-602-0000-00-1',
+            'isbn' => '9786020000001',
+            'call_number' => 'NOV-002',
             'penulis' => 'Penulis Lain',
             'penerbit' => 'Penerbit Lain',
             'tahun_terbit' => 2020,
             'harga' => 90000,
             'stok' => 5,
+            'sinopsis' => 'Sinopsis uji.',
+            'cover' => UploadedFile::fake()->image('cover-1.jpg'),
         ]);
 
         $response1->assertSessionHasErrors('judul');
 
         // Attempt 2: duplicate isbn
         $response2 = $this->actingAs($admin)->post(route('books.store'), [
+            'category_id' => $category->id,
             'judul' => 'Judul Buku Berbeda',
-            'isbn' => '978-979-3062-79-2',
+            'isbn' => '9789793062792',
+            'call_number' => 'NOV-003',
             'penulis' => 'Penulis Lain',
             'penerbit' => 'Penerbit Lain',
             'tahun_terbit' => 2020,
             'harga' => 90000,
             'stok' => 5,
+            'sinopsis' => 'Sinopsis uji.',
+            'cover' => UploadedFile::fake()->image('cover-2.jpg'),
         ]);
 
         $response2->assertSessionHasErrors('isbn');
 
         $this->assertDatabaseCount('books', 1);
+    }
+
+    public function test_chat_messages_are_paginated_and_show_the_latest_page_first(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create(['role' => 'user']);
+
+        foreach (range(1, 31) as $messageNumber) {
+            Message::create([
+                'sender_id' => $customer->id,
+                'receiver_id' => $admin->id,
+                'message' => 'Pesan '.$messageNumber,
+                'is_read' => false,
+            ]);
+        }
+
+        $this->actingAs($admin)
+            ->get(route('chat.index', ['user_id' => $customer->id]))
+            ->assertOk()
+            ->assertSee('Pesan 31')
+            ->assertDontSee('Pesan 1</div>', false);
+
+        $this->actingAs($admin)
+            ->get(route('chat.index', ['user_id' => $customer->id, 'messages_page' => 2]))
+            ->assertOk()
+            ->assertSee('Pesan 1')
+            ->assertDontSee('Pesan 31');
     }
 
     public function test_customer_can_send_chat_to_admin_and_saved_to_database(): void

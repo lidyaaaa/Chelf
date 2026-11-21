@@ -54,19 +54,26 @@
     </a>
 
     <div class="d-flex align-items-center gap-2 ps-2 border-start ms-1">
-        <span class="avatar-chip">
-            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-        </span>
-        <div class="lh-sm d-none d-sm-block me-1">
-            <div class="fw-bold text-slate-900" style="font-size: 0.82rem;">{{ auth()->user()->name }}</div>
-            <div class="text-slate-600 font-monospace" style="font-size: 0.7rem;">
-                {{ auth()->user()->nomor_anggota }}
+        <a href="{{ route('profile.edit') }}" class="d-flex align-items-center gap-2 text-decoration-none" title="Edit Profil Saya">
+            <span class="avatar-chip">
+                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+            </span>
+            <div class="lh-sm d-none d-sm-block me-1">
+                <div class="fw-bold text-slate-900" style="font-size: 0.82rem;">{{ auth()->user()->name }}</div>
+                <div class="text-slate-600 font-monospace" style="font-size: 0.7rem;">
+                    {{ auth()->user()->nomor_anggota }}
+                </div>
             </div>
-        </div>
+        </a>
+
+        <a href="{{ route('profile.edit') }}" class="btn btn-soft-secondary btn-sm" title="Edit Profil">
+            <i class="bi bi-person-gear"></i>
+        </a>
 
         <form action="{{ route('logout') }}" method="POST">
             @csrf
-            <button class="btn btn-soft-danger btn-sm" title="Keluar / Logout">
+            <button type="button" class="btn btn-soft-danger btn-sm logout-confirm-trigger"
+                data-bs-toggle="modal" data-bs-target="#logoutConfirmationModal" title="Keluar / Logout">
                 <i class="bi bi-power"></i>
                 <span class="d-lg-none">Logout</span>
             </button>

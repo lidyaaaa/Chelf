@@ -131,6 +131,11 @@
                 </tbody>
             </table>
         </div>
+        @if($monthlyTransactions->hasPages())
+            <div class="p-3">
+                {{ $monthlyTransactions->links('pagination::bootstrap-5') }}
+            </div>
+        @endif
     </div>
 
     {{-- 2. Tabel Inventaris Stok & Harga Buku --}}
@@ -177,5 +182,10 @@
                 </tbody>
             </table>
         </div>
+        @if($booksInventory->hasPages())
+            <div class="p-3">
+                {{ $booksInventory->links('pagination::bootstrap-5') }}
+            </div>
+        @endif
     </div>
 @endsection

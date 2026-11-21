@@ -18,7 +18,6 @@ class Transaction extends Model
     public const PAYMENT_METHODS = [
         'QRIS',
         'Transfer Bank',
-        'COD / Bayar di Tempat',
         'Tunai Kasir',
     ];
 

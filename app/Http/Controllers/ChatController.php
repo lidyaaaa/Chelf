@@ -41,26 +41,22 @@ class ChatController extends Controller
 
         if ($currentUser->role === 'admin') {
             // Daftar kontak untuk admin: semua user pelanggan yang pernah chat atau bertransaksi
-            $contactIds = Message::where('sender_id', $currentUser->id)
-                ->orWhere('receiver_id', $currentUser->id)
-                ->pluck('sender_id')
-                ->merge(
-                    Message::where('sender_id', $currentUser->id)
-                        ->orWhere('receiver_id', $currentUser->id)
-                        ->pluck('receiver_id')
-                )
-                ->merge(Transaction::pluck('user_id'))
-                ->unique()
-                ->reject(fn ($id) => $id == $currentUser->id);
-
-            $contacts = User::whereIn('id', $contactIds)
+            $contacts = User::where('id', '!=', $currentUser->id)
+                ->where(function ($query) use ($currentUser): void {
+                    $query->whereHas('sentMessages', function ($messageQuery) use ($currentUser): void {
+                        $messageQuery->where('receiver_id', $currentUser->id);
+                    })->orWhereHas('receivedMessages', function ($messageQuery) use ($currentUser): void {
+                        $messageQuery->where('sender_id', $currentUser->id);
+                    })->orWhereHas('transactions');
+                })
                 ->withCount([
                     'sentMessages as unread_count' => function ($q) use ($currentUser): void {
                         $q->where('receiver_id', $currentUser->id)->where('is_read', false);
                     },
                 ])
-                ->latest()
-                ->get();
+                ->latest('id')
+                ->paginate(12, ['*'], 'contacts_page')
+                ->withQueryString();
 
             if (! $activeUser && $contacts->isNotEmpty()) {
                 $activeUser = $contacts->first();
@@ -83,13 +79,17 @@ class ChatController extends Controller
                 ->update(['is_read' => true]);
 
             $messages = Message::where(function ($q) use ($currentUser, $activeUser): void {
-                $q->where('sender_id', $currentUser->id)->where('receiver_id', $activeUser->id);
-            })->orWhere(function ($q) use ($currentUser, $activeUser): void {
-                $q->where('sender_id', $activeUser->id)->where('receiver_id', $currentUser->id);
+                $q->where(function ($sentQuery) use ($currentUser, $activeUser): void {
+                    $sentQuery->where('sender_id', $currentUser->id)->where('receiver_id', $activeUser->id);
+                })->orWhere(function ($receivedQuery) use ($currentUser, $activeUser): void {
+                    $receivedQuery->where('sender_id', $activeUser->id)->where('receiver_id', $currentUser->id);
+                });
             })
                 ->with(['sender', 'transaction'])
-                ->oldest()
-                ->get();
+                ->latest('id')
+                ->paginate(30, ['*'], 'messages_page')
+                ->withQueryString();
+            $messages->setCollection($messages->getCollection()->reverse()->values());
         }
 
         // Ambil riwayat transaksi antara activeUser dan admin jika ada
@@ -119,7 +119,7 @@ class ChatController extends Controller
         $validated = $request->validate([
             'receiver_id' => 'required|exists:users,id',
             'transaction_id' => 'nullable|exists:transactions,id',
-            'message' => 'required|string|max:2000',
+            'message' => 'required|string|max:500',
         ]);
 
         $currentUser = Auth::user();

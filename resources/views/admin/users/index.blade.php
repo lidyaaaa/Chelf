@@ -17,16 +17,13 @@
             <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 rounded-pill fw-semibold">
                 <i class="bi bi-people-fill me-1"></i> {{ $totalMembers }} Pelanggan
             </span>
-            <span class="badge bg-dark bg-opacity-10 text-dark border border-dark border-opacity-25 px-3 py-2 rounded-pill fw-semibold">
-                <i class="bi bi-shield-lock-fill me-1"></i> {{ $totalAdmins }} Admin
-            </span>
         </div>
     </div>
 
     {{-- Filter & Pencarian User --}}
     <form method="GET" action="{{ route('users.index') }}" class="card border-0 shadow-sm rounded-4 p-3 mb-4">
         <div class="row g-2 align-items-center">
-            <div class="col-md-7">
+            <div class="col-md-10">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-end-0 text-slate-600">
                         <i class="bi bi-search"></i>
@@ -36,16 +33,9 @@
                         value="{{ request('search') }}">
                 </div>
             </div>
-            <div class="col-md-3">
-                <select name="role" class="form-select text-slate-700">
-                    <option value="">Semua Peran (Role)</option>
-                    <option value="user" @selected(request('role') === 'user')>Pelanggan (User)</option>
-                    <option value="admin" @selected(request('role') === 'admin')>Administrator</option>
-                </select>
-            </div>
             <div class="col-md-2 d-flex gap-2">
-                <button class="btn btn-primary w-100">Filter</button>
-                @if(request()->hasAny(['search', 'role']))
+                <button class="btn btn-primary w-100">Cari</button>
+                @if(request()->filled('search'))
                     <a href="{{ route('users.index') }}" class="btn btn-soft-secondary" title="Reset">
                         <i class="bi bi-x-lg"></i>
                     </a>

@@ -127,6 +127,11 @@
                     </table>
                 </div>
             </div>
+            @if($cartItems->hasPages())
+                <div class="mt-4">
+                    {{ $cartItems->links('pagination::bootstrap-5') }}
+                </div>
+            @endif
         </div>
 
         {{-- Panel Checkout & Ringkasan Pembayaran --}}
@@ -137,7 +142,7 @@
                 </h5>
 
                 <div class="d-flex justify-content-between small text-slate-600 mb-2">
-                    <span>Produk Dipilih</span>
+                    <span>Produk Dipilih di Halaman Ini</span>
                     <span class="fw-bold text-slate-900"><span id="summaryTotalItem">{{ $totalItem }}</span> Eksemplar</span>
                 </div>
 
@@ -193,7 +198,7 @@
 
                     <div class="mb-4">
                         <label class="form-label small fw-bold text-slate-700">Catatan Pesanan (Opsional)</label>
-                        <input type="text" name="catatan" class="form-control"
+                        <input type="text" name="catatan" class="form-control" maxlength="100"
                             placeholder="Contoh: Bungkus rapi / hadiah..." value="{{ old('catatan') }}">
                     </div>
 

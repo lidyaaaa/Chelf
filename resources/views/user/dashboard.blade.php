@@ -3,6 +3,14 @@
 @section('title', 'Dashboard Pelanggan — BookStore')
 
 @section('content')
+    @php
+        $namaBulan = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+    @endphp
+
     <div class="opac-header-surface p-4 p-lg-5 mb-4">
         <div class="row align-items-center justify-content-between g-3">
             <div class="col-lg-7">
@@ -24,10 +32,42 @@
                     <i class="bi bi-shop"></i> Belanja Buku
                 </a>
                 <a href="{{ route('cart.index') }}" class="btn btn-soft-primary bg-white">
-                    <i class="bi bi-cart3"></i> Keranjang ({{ $cartItems->sum('jumlah') }})
+                    <i class="bi bi-cart3"></i> Keranjang ({{ $cartItemCount }})
                 </a>
             </div>
         </div>
+
+        <form method="GET" action="{{ route('dashboard') }}" class="row g-2 align-items-center mt-3 pt-3 border-top border-primary border-opacity-10">
+            <div class="col-auto">
+                <span class="small fw-bold text-slate-700">
+                    <i class="bi bi-calendar3 text-primary me-1"></i> Lihat Transaksi &amp; Pengeluaran Bulan:
+                </span>
+            </div>
+            <div class="col-sm-4 col-md-3">
+                <select name="month" class="form-select form-select-sm bg-white">
+                    <option value="">-- Semua Bulan --</option>
+                    @foreach($namaBulan as $num => $label)
+                        <option value="{{ $num }}" @selected((int) ($month ?? 0) === $num)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-sm-3 col-md-2">
+                <select name="year" class="form-select form-select-sm bg-white">
+                    <option value="">-- Semua Tahun --</option>
+                    @foreach(range((int) date('Y'), 2023) as $yr)
+                        <option value="{{ $yr }}" @selected((int) ($year ?? 0) === $yr)>{{ $yr }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
+                @if(!empty($month) || !empty($year))
+                    <a href="{{ route('dashboard') }}" class="btn btn-soft-danger btn-sm">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                @endif
+            </div>
+        </form>
 
         <div class="row g-3 mt-3 pt-3 border-top border-primary border-opacity-10">
             <div class="col-sm-4">
@@ -35,7 +75,7 @@
                     <div>
                         <div class="small text-slate-600 fw-medium">Isi Keranjang Saat Ini</div>
                         <div class="fw-extrabold text-primary fs-5">
-                            {{ $cartItems->sum('jumlah') }} <span class="fs-6 fw-normal text-slate-600">Buku</span>
+                            {{ $cartItemCount }} <span class="fs-6 fw-normal text-slate-600">Buku</span>
                         </div>
                     </div>
                     <span class="badge bg-primary bg-opacity-10 text-primary p-2 rounded-3">
@@ -106,6 +146,11 @@
                         </div>
                     @endforelse
                 </div>
+                @if($recentTransactions->hasPages())
+                    <div class="card-footer bg-white border-top py-3 px-4 mt-auto">
+                        {{ $recentTransactions->links('pagination.bookstore') }}
+                    </div>
+                @endif
             </div>
         </div>
 

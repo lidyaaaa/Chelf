@@ -22,7 +22,7 @@
             <div class="row g-3">
                 <div class="col-md-7">
                     <label class="form-label fw-semibold small text-slate-700">Judul Buku <span class="text-danger">*</span></label>
-                    <input type="text" name="judul" class="form-control"
+                    <input type="text" name="judul" class="form-control" maxlength="100"
                         value="{{ old('judul', $book->judul) }}" required>
                 </div>
 
@@ -53,13 +53,13 @@
 
                 <div class="col-md-4">
                     <label class="form-label fw-medium">Penulis / Pengarang <span class="text-danger">*</span></label>
-                    <input type="text" name="penulis" class="form-control"
+                    <input type="text" name="penulis" class="form-control" maxlength="60"
                         value="{{ old('penulis', $book->penulis) }}" required>
                 </div>
 
                 <div class="col-md-4">
                     <label class="form-label fw-medium">Penerbit <span class="text-danger">*</span></label>
-                    <input type="text" name="penerbit" class="form-control"
+                    <input type="text" name="penerbit" class="form-control" maxlength="60"
                         value="{{ old('penerbit', $book->penerbit) }}" required>
                 </div>
 
@@ -69,19 +69,13 @@
                         value="{{ old('tahun_terbit', $book->tahun_terbit) }}" min="1000" max="{{ date('Y') }}">
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label fw-medium">Nomor ISBN</label>
-                    <input type="text" name="isbn" class="form-control"
+                    <input type="text" name="isbn" class="form-control" maxlength="17"
                         value="{{ old('isbn', $book->isbn) }}">
                 </div>
 
-                <div class="col-md-3">
-                    <label class="form-label fw-medium">Kode Rak Toko</label>
-                    <input type="text" name="call_number" class="form-control"
-                        value="{{ old('call_number', $book->call_number) }}">
-                </div>
-
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label fw-medium">Harga Jual (Rp) <span class="text-danger">*</span></label>
                     <input type="number" name="harga" class="form-control"
                         value="{{ old('harga', $book->harga) }}" min="0"
@@ -89,7 +83,7 @@
                         required>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label fw-medium">Stok Tersedia <span class="text-danger">*</span></label>
                     <input type="number" name="stok" class="form-control"
                         value="{{ old('stok', $book->stok) }}" min="0"
@@ -100,7 +94,7 @@
 
                 <div class="col-12">
                     <label class="form-label fw-medium">Sinopsis / Deskripsi Buku</label>
-                    <textarea name="sinopsis" rows="3" class="form-control">{{ old('sinopsis', $book->sinopsis) }}</textarea>
+                    <textarea name="sinopsis" rows="3" class="form-control" maxlength="1000">{{ old('sinopsis', $book->sinopsis) }}</textarea>
                 </div>
 
                 @if($book->cover)

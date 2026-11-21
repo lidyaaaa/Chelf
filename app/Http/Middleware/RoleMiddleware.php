@@ -18,19 +18,13 @@ class RoleMiddleware
         Closure $next,
         string $role
     ): Response {
-        if (! auth()->check()) {
-            return redirect()->route('login');
+        $user = $request->user();
+
+        if (! $user) {
+            abort(401, 'Anda harus login untuk mengakses halaman ini.');
         }
 
-        if (auth()->user()->role !== $role) {
-            if ($request->isMethod('GET')) {
-                return redirect()
-                    ->route('dashboard')
-                    ->withErrors([
-                        'role' => 'Akses dibatasi: Halaman tersebut hanya dapat diakses oleh role '.strtoupper($role).'.',
-                    ]);
-            }
-
+        if ($user->role !== $role) {
             abort(403, 'Anda tidak memiliki akses.');
         }
 

@@ -25,12 +25,14 @@ class TransactionController extends Controller
             return $this->adminIndex($request);
         }
 
-        return $this->userIndex($user);
+        return $this->userIndex($request, $user);
     }
 
     protected function adminIndex(Request $request)
     {
         $search = trim((string) $request->search);
+        $month = $request->filled('month') ? (int) $request->month : null;
+        $year = $request->filled('year') ? (int) $request->year : null;
 
         // Pesanan Menunggu Konfirmasi (Pending/Aktif)
         $pendingQuery = Transaction::query()
@@ -52,7 +54,17 @@ class TransactionController extends Controller
             });
         }
 
-        $pendingTransactions = $pendingQuery->latest()->get();
+        if ($month) {
+            $pendingQuery->whereMonth('tanggal_transaksi', $month);
+        }
+
+        if ($year) {
+            $pendingQuery->whereYear('tanggal_transaksi', $year);
+        }
+
+        $pendingTransactions = $pendingQuery->latest('id')
+            ->paginate(10, ['*'], 'pending_page')
+            ->withQueryString();
 
         // Riwayat Transaksi Selesai & Dibatalkan
         $historyQuery = Transaction::query()
@@ -78,31 +90,90 @@ class TransactionController extends Controller
             $historyQuery->where('status', $request->history_status);
         }
 
-        $historyTransactions = $historyQuery->latest()
+        if ($month) {
+            $historyQuery->whereMonth('tanggal_transaksi', $month);
+        }
+
+        if ($year) {
+            $historyQuery->whereYear('tanggal_transaksi', $year);
+        }
+
+        $totalPemasukan = (int) (clone $historyQuery)
+            ->where('status', Transaction::STATUS_SELESAI)
+            ->sum('total_harga');
+
+        $historyTransactions = $historyQuery->latest('id')
             ->paginate(10, ['*'], 'history_page')
             ->withQueryString();
 
         $members = User::where('role', 'user')->orderBy('name')->get();
         $availableBooks = Book::where('stok', '>', 0)->orderBy('judul')->get();
 
-        return view('admin.transactions.index', compact('pendingTransactions', 'historyTransactions', 'members', 'availableBooks'));
+        return view('admin.transactions.index', compact(
+            'pendingTransactions',
+            'historyTransactions',
+            'members',
+            'availableBooks',
+            'totalPemasukan',
+            'month',
+            'year'
+        ));
     }
 
-    protected function userIndex(User $user)
+    protected function userIndex(Request $request, User $user)
     {
-        $activeOrders = $user->transactions()
-            ->with('items.book.category')
-            ->where('status', Transaction::STATUS_MENUNGGU)
-            ->latest()
-            ->get();
+        $month = $request->filled('month') ? (int) $request->month : null;
+        $year = $request->filled('year') ? (int) $request->year : null;
 
-        $historyTransactions = $user->transactions()
+        $activeQuery = $user->transactions()
             ->with('items.book.category')
-            ->where('status', '!=', Transaction::STATUS_MENUNGGU)
-            ->latest()
-            ->paginate(10, ['*'], 'history_page');
+            ->where('status', Transaction::STATUS_MENUNGGU);
 
-        return view('user.transactions.index', compact('activeOrders', 'historyTransactions'));
+        if ($month) {
+            $activeQuery->whereMonth('tanggal_transaksi', $month);
+        }
+
+        if ($year) {
+            $activeQuery->whereYear('tanggal_transaksi', $year);
+        }
+
+        $activeOrders = $activeQuery
+            ->latest('id')
+            ->paginate(10, ['*'], 'active_page')
+            ->withQueryString();
+
+        $historyQuery = $user->transactions()
+            ->with('items.book.category')
+            ->where('status', '!=', Transaction::STATUS_MENUNGGU);
+
+        if ($request->filled('history_status')) {
+            $historyQuery->where('status', $request->history_status);
+        }
+
+        if ($month) {
+            $historyQuery->whereMonth('tanggal_transaksi', $month);
+        }
+
+        if ($year) {
+            $historyQuery->whereYear('tanggal_transaksi', $year);
+        }
+
+        $totalPengeluaran = (int) (clone $historyQuery)
+            ->where('status', Transaction::STATUS_SELESAI)
+            ->sum('total_harga');
+
+        $historyTransactions = $historyQuery
+            ->latest('id')
+            ->paginate(10, ['*'], 'history_page')
+            ->withQueryString();
+
+        return view('user.transactions.index', compact(
+            'activeOrders',
+            'historyTransactions',
+            'totalPengeluaran',
+            'month',
+            'year'
+        ));
     }
 
     /**
@@ -119,8 +190,8 @@ class TransactionController extends Controller
             'cart_ids.*' => 'integer',
             'metode_pembayaran' => ['required', Rule::in(Transaction::PAYMENT_METHODS)],
             'address_id' => 'nullable|integer',
-            'alamat_pengiriman' => 'nullable|string|max:500',
-            'catatan' => 'nullable|string|max:255',
+            'alamat_pengiriman' => 'nullable|string|max:200',
+            'catatan' => 'nullable|string|max:100',
         ]);
 
         if ($request->has('cart_ids_submitted') && empty($data['cart_ids'])) {

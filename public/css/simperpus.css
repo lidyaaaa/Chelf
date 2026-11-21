@@ -206,6 +206,16 @@ h1, h2, h3, h4, h5, h6, .fw-bold {
     transform: translateY(-1px);
 }
 
+.book-delete-blocked-action {
+    opacity: 0.55;
+    cursor: pointer;
+}
+
+.book-delete-blocked-action:hover {
+    opacity: 0.75;
+    transform: none;
+}
+
 .btn-outline-danger, .btn-soft-danger {
     background: #fff1f2;
     color: #e11d48;
@@ -485,6 +495,51 @@ h1, h2, h3, h4, h5, h6, .fw-bold {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
+}
+
+/* =========================================================
+   MODERN PAGINATION STYLING
+   ========================================================= */
+.pagination {
+    gap: 0.35rem;
+}
+
+.pagination .page-link {
+    border-radius: 9px !important;
+    border: 1px solid var(--slate-200);
+    color: var(--slate-700);
+    font-weight: 600;
+    font-size: 0.82rem;
+    min-width: 34px;
+    height: 34px;
+    padding: 0 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    transition: all 0.16s ease;
+}
+
+.pagination .page-link:hover {
+    background-color: #eff6ff;
+    border-color: #93c5fd;
+    color: var(--brand-700);
+    transform: translateY(-1px);
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border-color: #1d4ed8;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+}
+
+.pagination .page-item.disabled .page-link {
+    background-color: var(--slate-50);
+    border-color: var(--slate-200);
+    color: var(--slate-300);
+    box-shadow: none;
 }
 
 @media print {

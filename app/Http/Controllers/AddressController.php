@@ -12,10 +12,10 @@ class AddressController extends Controller
         UserAddress::ensureTableExists();
 
         $data = $request->validate([
-            'label' => 'required|string|max:50',
-            'penerima' => 'required|string|max:100',
-            'telepon' => 'required|string|max:30',
-            'alamat_lengkap' => 'required|string|max:500',
+            'label' => 'required|string|max:20',
+            'penerima' => 'required|string|max:50',
+            'telepon' => 'required|string|max:15',
+            'alamat_lengkap' => 'required|string|max:200',
         ]);
 
         $user = auth()->user();
@@ -39,10 +39,10 @@ class AddressController extends Controller
         abort_unless($address->user_id === auth()->id(), 403);
 
         $data = $request->validate([
-            'label' => 'required|string|max:50',
-            'penerima' => 'required|string|max:100',
-            'telepon' => 'required|string|max:30',
-            'alamat_lengkap' => 'required|string|max:500',
+            'label' => 'required|string|max:20',
+            'penerima' => 'required|string|max:50',
+            'telepon' => 'required|string|max:15',
+            'alamat_lengkap' => 'required|string|max:200',
             'is_utama' => 'nullable|boolean',
         ]);
 

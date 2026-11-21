@@ -21,19 +21,19 @@
             <div class="row g-3">
                 <div class="col-md-7">
                     <label class="form-label fw-semibold small text-slate-700">Judul Buku <span class="text-danger">*</span></label>
-                    <input type="text" name="judul" class="form-control" value="{{ old('judul') }}" required>
+                    <input type="text" name="judul" class="form-control" maxlength="100" value="{{ old('judul') }}" required>
                 </div>
 
                 <div class="col-md-5">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <label class="form-label fw-semibold small text-slate-700 mb-0">Pilih Kategori</label>
+                        <label class="form-label fw-semibold small text-slate-700 mb-0">Pilih Kategori <span class="text-danger">*</span></label>
                         <button type="button" class="btn btn-link btn-sm p-0 fw-semibold text-decoration-none"
                             data-bs-toggle="modal" data-bs-target="#categoryModal">
                             <i class="bi bi-plus-circle-fill me-1"></i>Tambah / Kelola Kategori Baru
                         </button>
                     </div>
                     <div class="input-group">
-                        <select name="category_id" class="form-select">
+                        <select name="category_id" class="form-select" required>
                             <option value="">-- Pilih Kategori --</option>
                             @foreach($categories as $cat)
                                 <option value="{{ $cat->id }}" @selected(old('category_id') == $cat->id)>
@@ -51,41 +51,37 @@
 
                 <div class="col-md-4">
                     <label class="form-label fw-medium">Penulis / Pengarang <span class="text-danger">*</span></label>
-                    <input type="text" name="penulis" class="form-control" value="{{ old('penulis') }}" required>
+                    <input type="text" name="penulis" class="form-control" maxlength="60" value="{{ old('penulis') }}" required>
                 </div>
 
                 <div class="col-md-4">
                     <label class="form-label fw-medium">Penerbit <span class="text-danger">*</span></label>
-                    <input type="text" name="penerbit" class="form-control" value="{{ old('penerbit') }}" required>
+                    <input type="text" name="penerbit" class="form-control" maxlength="60" value="{{ old('penerbit') }}" required>
                 </div>
 
                 <div class="col-md-4">
-                    <label class="form-label fw-medium">Tahun Terbit</label>
+                    <label class="form-label fw-medium">Tahun Terbit <span class="text-danger">*</span></label>
                     <input type="number" name="tahun_terbit" class="form-control"
-                        value="{{ old('tahun_terbit', date('Y')) }}" min="1000" max="{{ date('Y') }}">
+                        value="{{ old('tahun_terbit', date('Y')) }}" min="1000" max="{{ date('Y') }}" required>
                 </div>
 
-                <div class="col-md-3">
-                    <label class="form-label fw-medium">Nomor ISBN</label>
+                <div class="col-md-4">
+                    <label class="form-label fw-medium">Nomor ISBN <span class="text-danger">*</span></label>
                     <input type="text" name="isbn" class="form-control"
-                        placeholder="978-602-xxxx-xx-x" value="{{ old('isbn') }}">
+                        placeholder="978-623-95545-6-9" pattern="[0-9]+(-[0-9]+)*" maxlength="17"
+                        value="{{ old('isbn') }}" required>
+                    <div class="form-text">Maksimal 17 karakter; angka dan tanda hubung diperbolehkan.</div>
                 </div>
 
-                <div class="col-md-3">
-                    <label class="form-label fw-medium">Kode Rak Toko</label>
-                    <input type="text" name="call_number" class="form-control"
-                        placeholder="Contoh: RAK-A1" value="{{ old('call_number') }}">
-                </div>
-
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label fw-medium">Harga Jual (Rp) <span class="text-danger">*</span></label>
                     <input type="number" name="harga" class="form-control"
-                        value="{{ old('harga', 75000) }}" min="0"
+                        value="{{ old('harga') }}" placeholder="Contoh: 75000" min="0"
                         oninput="if(this.value < 0) this.value = 0;"
                         required>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label fw-medium">Stok Buku <span class="text-danger">*</span></label>
                     <input type="number" name="stok" class="form-control"
                         value="{{ old('stok', 10) }}" min="0"
@@ -95,14 +91,14 @@
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label fw-medium">Sinopsis / Deskripsi Buku</label>
-                    <textarea name="sinopsis" rows="3" class="form-control"
-                        placeholder="Ringkasan isi buku untuk ditampilkan pada katalog toko...">{{ old('sinopsis') }}</textarea>
+                    <label class="form-label fw-medium">Sinopsis / Deskripsi Buku <span class="text-danger">*</span></label>
+                    <textarea name="sinopsis" rows="3" class="form-control" maxlength="1000"
+                        placeholder="Ringkasan isi buku untuk ditampilkan pada katalog toko..." required>{{ old('sinopsis') }}</textarea>
                 </div>
 
                 <div class="col-12">
-                    <label class="form-label fw-medium">Sampul / Cover Buku</label>
-                    <input type="file" name="cover" class="form-control" accept=".jpg,.jpeg,.png,.webp">
+                    <label class="form-label fw-medium">Sampul / Cover Buku <span class="text-danger">*</span></label>
+                    <input type="file" name="cover" class="form-control" accept=".jpg,.jpeg,.png,.webp" required>
                     <small class="text-secondary">Format JPG, PNG, atau WEBP. Maksimal 2 MB.</small>
                 </div>
             </div>

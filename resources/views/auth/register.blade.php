@@ -15,7 +15,7 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-medium">Nama Lengkap</label>
-                        <input type="text" name="name"
+                        <input type="text" name="name" maxlength="50"
                             class="form-control @error('name') is-invalid @enderror"
                             placeholder="Contoh: Budi Santoso"
                             value="{{ old('name') }}" required>
@@ -36,7 +36,7 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-medium">Email</label>
-                        <input type="email" name="email"
+                        <input type="email" name="email" maxlength="80"
                             class="form-control @error('email') is-invalid @enderror"
                             placeholder="nama@email.com"
                             value="{{ old('email') }}" required>

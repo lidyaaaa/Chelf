@@ -19,11 +19,7 @@ class ReportController extends Controller
         $authUser = auth()->user();
 
         if ($authUser->role === 'admin' && $user === null) {
-            return redirect()
-                ->route('dashboard')
-                ->withErrors([
-                    'role' => 'Akses dibatasi: Halaman Kartu Member hanya diperuntukkan bagi Pelanggan.',
-                ]);
+            abort(403, 'Halaman kartu member hanya dapat diakses oleh pelanggan.');
         }
 
         if ($authUser->role !== 'admin' && $user !== null && $user->id !== $authUser->id) {
@@ -47,14 +43,16 @@ class ReportController extends Controller
         $month = (int) $request->input('month', (int) date('m'));
         $year = (int) $request->input('year', (int) date('Y'));
 
-        $monthlyTransactions = Transaction::with(['user', 'items.book.category'])
+        $monthlyQuery = Transaction::query()
             ->whereYear('tanggal_transaksi', $year)
-            ->whereMonth('tanggal_transaksi', $month)
-            ->latest('tanggal_transaksi')
-            ->get();
+            ->whereMonth('tanggal_transaksi', $month);
 
-        $completedMonthly = $monthlyTransactions->where('status', Transaction::STATUS_SELESAI);
-        $validSoldMonthly = $monthlyTransactions->where('status', '!=', Transaction::STATUS_DIBATALKAN);
+        $monthlyTransactions = (clone $monthlyQuery)
+            ->with(['user', 'items.book.category'])
+            ->latest('tanggal_transaksi')
+            ->latest('id')
+            ->paginate(15, ['*'], 'transactions_page')
+            ->withQueryString();
 
         $booksInventory = Book::with('category')
             ->withCount('carts')
@@ -62,13 +60,21 @@ class ReportController extends Controller
                 $q->whereHas('transaction', fn ($tq) => $tq->where('status', '!=', Transaction::STATUS_DIBATALKAN));
             }], 'jumlah')
             ->orderBy('stok')
-            ->get();
+            ->orderBy('id')
+            ->paginate(15, ['*'], 'books_page')
+            ->withQueryString();
 
         $summary = [
-            'total_transaksi_bulan_ini' => $monthlyTransactions->count(),
-            'transaksi_selesai_bulan_ini' => $completedMonthly->count(),
-            'buku_terjual_bulan_ini' => (int) $validSoldMonthly->sum('total_item'),
-            'pendapatan_bulan_ini' => (int) $validSoldMonthly->sum('total_harga'),
+            'total_transaksi_bulan_ini' => (clone $monthlyQuery)->count(),
+            'transaksi_selesai_bulan_ini' => (clone $monthlyQuery)
+                ->where('status', Transaction::STATUS_SELESAI)
+                ->count(),
+            'buku_terjual_bulan_ini' => (int) (clone $monthlyQuery)
+                ->where('status', '!=', Transaction::STATUS_DIBATALKAN)
+                ->sum('total_item'),
+            'pendapatan_bulan_ini' => (int) (clone $monthlyQuery)
+                ->where('status', '!=', Transaction::STATUS_DIBATALKAN)
+                ->sum('total_harga'),
             'total_kategori' => Category::count(),
         ];
 

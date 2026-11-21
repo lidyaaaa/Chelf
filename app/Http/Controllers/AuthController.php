@@ -18,8 +18,8 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email',
+            'name' => 'required|string|max:50',
+            'email' => 'required|email|max:80|unique:users,email',
             'telepon' => 'required|digits_between:10,13',
             'password' => ['required', 'string', 'confirmed', Password::min(8)->letters()->numbers()->symbols()],
         ], [
@@ -53,7 +53,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'email' => 'required|email',
+            'name' => 'required|string|max:50',
             'password' => 'required|string',
         ]);
 
@@ -66,9 +66,9 @@ class AuthController extends Controller
 
         return back()
             ->withErrors([
-                'email' => 'Email atau password salah.',
+                'name' => 'Nama Lengkap atau password salah.',
             ])
-            ->onlyInput('email');
+            ->onlyInput('name');
     }
 
     public function logout(Request $request)

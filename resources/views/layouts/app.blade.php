@@ -43,10 +43,6 @@
                         </div>
 
                         <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('books.index') }}" class="btn btn-outline-secondary btn-sm" target="_blank" title="Lihat Tampilan Toko">
-                                <i class="bi bi-box-arrow-up-right me-1"></i>
-                                <span class="d-none d-md-inline">Lihat Toko</span>
-                            </a>
                             <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 py-2 px-3 d-none d-sm-inline-flex align-items-center">
                                 <i class="bi bi-shield-check me-1"></i> Administrator
                             </span>
@@ -152,6 +148,23 @@
     </footer>
 @endauth
 
+    @auth
+        @if(auth()->user()->role === 'admin')
+            <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+                <div id="book-delete-blocked-toast" class="toast border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="toast-header">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                        <strong class="me-auto">Buku belum dapat dihapus</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Tutup"></button>
+                    </div>
+                    <div id="book-delete-blocked-toast-message" class="toast-body"></div>
+                </div>
+            </div>
+        @endif
+
+        @include('layouts.partials.logout-confirmation-modal')
+    @endauth
+
     {{-- Floating Web Chat Button (khusus non-admin atau opsional) --}}
     @auth
         @if(auth()->user()->role !== 'admin')
@@ -231,10 +244,79 @@
             });
         }
 
+        const blockedDeleteToast = document.getElementById('book-delete-blocked-toast');
+        const blockedDeleteToastMessage = document.getElementById('book-delete-blocked-toast-message');
+
+        document.addEventListener('click', function (event) {
+            const blockedDeleteButton = event.target.closest('[data-delete-blocked-reason]');
+
+            if (!blockedDeleteButton || !blockedDeleteToast || !blockedDeleteToastMessage) {
+                return;
+            }
+
+            blockedDeleteToastMessage.textContent = blockedDeleteButton.dataset.deleteBlockedReason;
+            bootstrap.Toast.getOrCreateInstance(blockedDeleteToast).show();
+        });
+
+        let logoutFormToSubmit = null;
+
+        document.querySelectorAll('.logout-confirm-trigger').forEach((button) => {
+            button.addEventListener('click', function () {
+                logoutFormToSubmit = this.closest('form');
+            });
+        });
+
+        const confirmLogoutButton = document.getElementById('confirmLogoutButton');
+        if (confirmLogoutButton) {
+            confirmLogoutButton.addEventListener('click', function () {
+                if (logoutFormToSubmit) {
+                    logoutFormToSubmit.submit();
+                }
+            });
+        }
+
         window.addEventListener('pageshow', function (event) {
             if (event.persisted || (window.performance && window.performance.getEntriesByType('navigation')[0]?.type === 'back_forward')) {
                 window.location.reload();
             }
+        });
+
+        // Indikator batas karakter real-time untuk semua input/textarea yang memiliki atribut maxlength
+        document.addEventListener('input', function (event) {
+            const el = event.target;
+            if (!el.matches('input[maxlength], textarea[maxlength]')) {
+                return;
+            }
+            if (el.type === 'password' || el.type === 'hidden') {
+                return;
+            }
+
+            const max = parseInt(el.getAttribute('maxlength'), 10);
+            if (!max || max <= 0) {
+                return;
+            }
+
+            let hint = el.parentElement.querySelector(':scope > .char-limit-hint');
+            if (!hint) {
+                hint = document.createElement('div');
+                hint.className = 'char-limit-hint small mt-1 w-100';
+                if (el.parentElement.classList.contains('input-group')) {
+                    el.parentElement.appendChild(hint);
+                } else {
+                    el.insertAdjacentElement('afterend', hint);
+                }
+            }
+
+            const len = el.value.length;
+            if (len === 0) {
+                hint.classList.add('d-none');
+                return;
+            }
+
+            hint.classList.remove('d-none');
+            hint.textContent = `${len}/${max} karakter (maksimal ${max})`;
+            const isOverLimit = len > max;
+            hint.className = 'char-limit-hint small mt-1 w-100 ' + (isOverLimit ? 'text-danger fw-semibold' : 'text-muted');
         });
     </script>
 </body>

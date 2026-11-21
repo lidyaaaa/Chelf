@@ -13,9 +13,13 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'nama' => 'required|string|max:100|unique:categories,nama',
-            'kode_ddc' => 'nullable|string|max:20',
-            'deskripsi' => 'nullable|string|max:255',
+            'nama' => 'required|string|max:25|unique:categories,nama',
+            'kode_ddc' => 'nullable|string|max:15',
+            'deskripsi' => 'nullable|string|max:100',
+        ], [
+            'nama.max' => 'Nama kategori maksimal 25 karakter.',
+            'kode_ddc.max' => 'Kode rak maksimal 15 karakter.',
+            'deskripsi.max' => 'Keterangan kategori maksimal 100 karakter.',
         ]);
 
         Category::create($data);
@@ -29,9 +33,13 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         $data = $request->validate([
-            'nama' => 'required|string|max:100|unique:categories,nama,'.$category->id,
-            'kode_ddc' => 'nullable|string|max:20',
-            'deskripsi' => 'nullable|string|max:255',
+            'nama' => 'required|string|max:25|unique:categories,nama,'.$category->id,
+            'kode_ddc' => 'nullable|string|max:15',
+            'deskripsi' => 'nullable|string|max:100',
+        ], [
+            'nama.max' => 'Nama kategori maksimal 25 karakter.',
+            'kode_ddc.max' => 'Kode rak maksimal 15 karakter.',
+            'deskripsi.max' => 'Keterangan kategori maksimal 100 karakter.',
         ]);
 
         $category->update($data);

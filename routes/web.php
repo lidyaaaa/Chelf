@@ -35,9 +35,13 @@ Route::middleware('guest')->group(function () {
         ->name('login.store');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth.forbidden')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
+    Route::get('/profil', [UserController::class, 'editProfile'])
+        ->name('profile.edit');
+    Route::put('/profil', [UserController::class, 'updateProfile'])
+        ->name('profile.update');
     Route::post('/logout', [AuthController::class, 'logout'])
         ->name('logout');
     Route::get('/kartu-member/{user?}', [ReportController::class, 'memberCard'])

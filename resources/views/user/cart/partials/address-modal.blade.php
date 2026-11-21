@@ -24,16 +24,16 @@
                         </span>
                     </div>
                     <div class="col-md-2">
-                        <input type="text" name="label" class="form-control form-control-sm" placeholder="Label (Rumah/Kos)" value="Rumah" required>
+                        <input type="text" name="label" class="form-control form-control-sm" placeholder="Label (Rumah/Kos)" value="Rumah" maxlength="20" required>
                     </div>
                     <div class="col-md-3">
-                        <input type="text" name="penerima" class="form-control form-control-sm" placeholder="Nama Penerima *" value="{{ auth()->user()->name }}" required>
+                        <input type="text" name="penerima" class="form-control form-control-sm" placeholder="Nama Penerima *" value="{{ auth()->user()->name }}" maxlength="50" required>
                     </div>
                     <div class="col-md-2">
-                        <input type="text" name="telepon" class="form-control form-control-sm" placeholder="No. HP *" value="{{ auth()->user()->telepon }}" required>
+                        <input type="text" name="telepon" class="form-control form-control-sm" placeholder="No. HP *" value="{{ auth()->user()->telepon }}" maxlength="15" required>
                     </div>
                     <div class="col-md-3">
-                        <input type="text" name="alamat_lengkap" class="form-control form-control-sm" placeholder="Alamat Lengkap (Jl, No, Kota) *" required>
+                        <input type="text" name="alamat_lengkap" class="form-control form-control-sm" placeholder="Alamat Lengkap (Jl, No, Kota) *" maxlength="200" required>
                     </div>
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-primary btn-sm w-100">
@@ -62,16 +62,16 @@
                                             @csrf
                                             @method('PUT')
                                             <div class="col-md-2">
-                                                <input type="text" name="label" value="{{ $addr->label }}" class="form-control form-control-sm fw-bold text-slate-900" required>
+                                                <input type="text" name="label" value="{{ $addr->label }}" maxlength="20" class="form-control form-control-sm fw-bold text-slate-900" required>
                                             </div>
                                             <div class="col-md-2">
-                                                <input type="text" name="penerima" value="{{ $addr->penerima }}" class="form-control form-control-sm" required>
+                                                <input type="text" name="penerima" value="{{ $addr->penerima }}" maxlength="50" class="form-control form-control-sm" required>
                                             </div>
                                             <div class="col-md-2">
-                                                <input type="text" name="telepon" value="{{ $addr->telepon }}" class="form-control form-control-sm font-monospace" required>
+                                                <input type="text" name="telepon" value="{{ $addr->telepon }}" maxlength="15" class="form-control form-control-sm font-monospace" required>
                                             </div>
                                             <div class="col-md-4">
-                                                <input type="text" name="alamat_lengkap" value="{{ $addr->alamat_lengkap }}" class="form-control form-control-sm text-slate-700" required>
+                                                <input type="text" name="alamat_lengkap" value="{{ $addr->alamat_lengkap }}" maxlength="200" class="form-control form-control-sm text-slate-700" required>
                                             </div>
                                             <div class="col-md-2 text-end d-flex justify-content-end gap-1">
                                                 <button type="submit" class="btn btn-soft-primary btn-sm" title="Simpan Perubahan">

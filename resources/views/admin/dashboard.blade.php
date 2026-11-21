@@ -3,6 +3,14 @@
 @section('title', 'Dashboard Admin — BookStore')
 
 @section('content')
+    @php
+        $namaBulan = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+    @endphp
+
     <div class="opac-header-surface p-4 p-lg-5 mb-4">
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
             <div>
@@ -34,6 +42,38 @@
                 </a>
             </div>
         </div>
+
+        <form method="GET" action="{{ route('dashboard') }}" class="row g-2 align-items-center mt-3 pt-3 border-top border-primary border-opacity-10">
+            <div class="col-auto">
+                <span class="small fw-bold text-slate-700">
+                    <i class="bi bi-calendar3 text-primary me-1"></i> Filter Pemasukan &amp; Transaksi per Bulan:
+                </span>
+            </div>
+            <div class="col-sm-4 col-md-3">
+                <select name="month" class="form-select form-select-sm bg-white">
+                    <option value="">-- Semua Bulan --</option>
+                    @foreach($namaBulan as $num => $label)
+                        <option value="{{ $num }}" @selected((int) ($month ?? 0) === $num)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-sm-3 col-md-2">
+                <select name="year" class="form-select form-select-sm bg-white">
+                    <option value="">-- Semua Tahun --</option>
+                    @foreach(range((int) date('Y'), 2023) as $yr)
+                        <option value="{{ $yr }}" @selected((int) ($year ?? 0) === $yr)>{{ $yr }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
+                @if(!empty($month) || !empty($year))
+                    <a href="{{ route('dashboard') }}" class="btn btn-soft-danger btn-sm">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                @endif
+            </div>
+        </form>
     </div>
 
     {{-- Kartu Statistik Utama --}}
@@ -117,7 +157,7 @@
                     </h6>
                     <small class="text-slate-600">Segera tambah stok agar pelanggan tetap dapat membeli buku</small>
                 </div>
-                <div class="table-responsive">
+                <div class="table-responsive flex-grow-1">
                     <table class="table table-hover align-middle mb-0">
                         <thead>
                             <tr>
@@ -163,6 +203,11 @@
                         </tbody>
                     </table>
                 </div>
+                @if($lowStockBooks->hasPages())
+                    <div class="card-footer bg-white border-top py-3 px-4 mt-auto">
+                        {{ $lowStockBooks->links('pagination.bookstore') }}
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -173,10 +218,10 @@
                     <h6 class="fw-bold text-slate-900 mb-0">Transaksi Terbaru</h6>
                     <a href="{{ route('transactions.index') }}" class="btn btn-soft-primary btn-sm">Lihat Semua</a>
                 </div>
-                <div class="card-body px-4 py-2">
+                <div class="card-body px-4 py-2 flex-grow-1">
                     <ul class="list-group list-group-flush">
                         @forelse($recentTransactions as $trx)
-                            <li class="list-group-item px-0 py-3 d-flex justify-content-between align-items-start border-bottom-0 border-top">
+                            <li class="list-group-item px-0 py-3 d-flex justify-content-between align-items-start {{ $loop->first ? 'border-0' : 'border-bottom-0 border-top' }}">
                                 <div>
                                     <div class="fw-bold text-slate-900">
                                         {{ $trx->user->name ?? '-' }} &bull; <code class="text-primary">{{ $trx->kode_transaksi }}</code>
@@ -200,6 +245,11 @@
                         @endforelse
                     </ul>
                 </div>
+                @if($recentTransactions->hasPages())
+                    <div class="card-footer bg-white border-top py-3 px-4 mt-auto">
+                        {{ $recentTransactions->links('pagination.bookstore') }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>

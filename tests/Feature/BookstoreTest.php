@@ -144,31 +144,46 @@ class BookstoreTest extends TestCase
             ->get(route('register'))
             ->assertRedirect(route('dashboard'));
 
-        // 2. Pembatas Role: Admin tidak bisa masuk ke halaman khusus User (/keranjang, /kartu-member) saat tekan tombol Back
+        // 2. Pembatas Role: Admin tidak bisa membuka halaman khusus User.
         $this->actingAs($admin)
             ->get(route('cart.index'))
-            ->assertRedirect(route('dashboard'))
-            ->assertSessionHasErrors('role');
+            ->assertForbidden()
+            ->assertSee('Akses Ditolak');
 
         $this->actingAs($admin)
             ->get(route('member.card'))
-            ->assertRedirect(route('dashboard'))
-            ->assertSessionHasErrors('role');
+            ->assertForbidden()
+            ->assertSee('Akses Ditolak');
 
-        // 3. Pembatas Role: User biasa tidak bisa masuk ke halaman khusus Admin (/laporan, /books/create) saat tekan tombol Back
+        $this->actingAs($admin)
+            ->get(route('member.card', $user))
+            ->assertOk();
+
+        // 3. Pembatas Role: User biasa tidak bisa membuka halaman khusus Admin.
         $this->actingAs($user)
             ->get(route('reports.index'))
-            ->assertRedirect(route('dashboard'))
-            ->assertSessionHasErrors('role');
+            ->assertForbidden()
+            ->assertSee('Akses Ditolak');
 
         $this->actingAs($user)
             ->get(route('books.create'))
-            ->assertRedirect(route('dashboard'))
-            ->assertSessionHasErrors('role');
+            ->assertForbidden()
+            ->assertSee('Akses Ditolak');
 
-        // 4. Header anti-cache (PreventBackHistory) selalu aktif agar browser tidak menampilkan halaman lama dari cache tombol Back
+        // 4. Header anti-cache (PreventBackHistory) selalu aktif agar browser tidak menampilkan halaman lama dari cache tombol Back.
         $response = $this->actingAs($admin)->get(route('dashboard'));
         $response->assertHeader('Pragma', 'no-cache');
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+    }
+
+    public function test_guest_receives_unauthorized_response_for_protected_pages(): void
+    {
+        $this->get(route('dashboard'))
+            ->assertUnauthorized()
+            ->assertSee('Unauthorized');
+
+        $this->get(route('books.create'))
+            ->assertUnauthorized()
+            ->assertSee('Unauthorized');
     }
 }

@@ -18,29 +18,53 @@
         </button>
     </div>
 
+    @php
+        $namaBulan = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+    @endphp
+
     {{-- Filter & Pencarian Transaksi Admin --}}
     <form method="GET" action="{{ route('transactions.index') }}" class="card border-0 shadow-sm rounded-4 p-3 mb-4">
         <div class="row g-2 align-items-center">
-            <div class="col-md-7">
+            <div class="col-lg-4">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-end-0 text-slate-600">
                         <i class="bi bi-search"></i>
                     </span>
                     <input type="text" name="search" class="form-control border-start-0 ps-0"
-                        placeholder="Cari kode transaksi, metode bayar, nama pembeli, nomor member, atau judul buku..."
+                        placeholder="Cari kode, metode, pembeli, atau buku..."
                         value="{{ request('search') }}">
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-sm-4 col-lg-2">
+                <select name="month" class="form-select text-slate-700">
+                    <option value="">Semua Bulan</option>
+                    @foreach($namaBulan as $num => $label)
+                        <option value="{{ $num }}" @selected((int) request('month') === $num)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-sm-4 col-lg-2">
+                <select name="year" class="form-select text-slate-700">
+                    <option value="">Semua Tahun</option>
+                    @foreach(range((int) date('Y'), 2023) as $yr)
+                        <option value="{{ $yr }}" @selected((int) request('year') === $yr)>{{ $yr }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-sm-4 col-lg-2">
                 <select name="history_status" class="form-select text-slate-700">
                     <option value="">Semua Status Riwayat</option>
                     <option value="selesai" @selected(request('history_status') === 'selesai')>Selesai / Lunas</option>
                     <option value="dibatalkan" @selected(request('history_status') === 'dibatalkan')>Dibatalkan</option>
                 </select>
             </div>
-            <div class="col-md-2 d-flex gap-2">
+            <div class="col-lg-2 d-flex gap-2">
                 <button class="btn btn-primary w-100">Filter</button>
-                @if(request()->hasAny(['search', 'history_status']))
+                @if(request()->hasAny(['search', 'history_status', 'month', 'year']))
                     <a href="{{ route('transactions.index') }}" class="btn btn-soft-secondary" title="Reset">
                         <i class="bi bi-x-lg"></i>
                     </a>
@@ -62,7 +86,7 @@
                 </div>
             </div>
             <span class="badge bg-warning bg-opacity-25 text-warning-emphasis border border-warning border-opacity-50 px-3 py-2 rounded-pill fw-bold">
-                {{ $pendingTransactions->count() }} Menunggu Konfirmasi
+                {{ $pendingTransactions->total() }} Menunggu Konfirmasi
             </span>
         </div>
 
@@ -168,22 +192,37 @@
             </table>
         </div>
     </div>
+    @if($pendingTransactions->hasPages())
+        <div class="mt-4 mb-5">
+            {{ $pendingTransactions->links('pagination::bootstrap-5') }}
+        </div>
+    @endif
 
     {{-- BAGIAN 2: RIWAYAT TRANSAKSI PENJUALAN (SELESAI / DIBATALKAN) --}}
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
+        <div class="card-header bg-white border-bottom py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div class="d-flex align-items-center gap-2">
                 <div class="rounded-circle p-2 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
                     <i class="bi bi-clock-history fs-5"></i>
                 </div>
                 <div>
                     <h5 class="fw-bold text-slate-900 mb-0">Riwayat Transaksi Penjualan</h5>
-                    <span class="small text-muted">Arsip seluruh transaksi yang telah lunas/selesai atau dibatalkan</span>
+                    <span class="small text-muted">
+                        Arsip seluruh transaksi yang telah lunas/selesai atau dibatalkan
+                        @if($month || $year)
+                            ({{ $month ? ($namaBulan[$month] ?? $month) : 'Semua Bulan' }} {{ $year ?: '' }})
+                        @endif
+                    </span>
                 </div>
             </div>
-            <span class="badge bg-secondary bg-opacity-10 text-slate-700 px-3 py-2 rounded-pill fw-semibold">
-                {{ $historyTransactions->total() }} Riwayat
-            </span>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill fw-bold">
+                    <i class="bi bi-cash-stack me-1"></i> Pemasukan (Selesai): Rp {{ number_format($totalPemasukan ?? 0, 0, ',', '.') }}
+                </span>
+                <span class="badge bg-secondary bg-opacity-10 text-slate-700 px-3 py-2 rounded-pill fw-semibold">
+                    {{ $historyTransactions->total() }} Riwayat
+                </span>
+            </div>
         </div>
 
         <div class="table-responsive">

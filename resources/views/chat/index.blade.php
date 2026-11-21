@@ -35,7 +35,7 @@
             <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
                 <div class="card-header bg-white border-bottom py-3 px-3">
                     <div class="fw-bold text-slate-800">
-                        <i class="bi bi-people-fill text-primary me-1"></i> Kontak Pelanggan ({{ $contacts->count() }})
+                        <i class="bi bi-people-fill text-primary me-1"></i> Kontak Pelanggan ({{ $contacts->total() }})
                     </div>
                 </div>
                 <div class="list-group list-group-flush overflow-y-auto" style="max-height: 580px;">
@@ -64,6 +64,11 @@
                         </div>
                     @endforelse
                 </div>
+                @if($contacts->hasPages())
+                    <div class="p-2">
+                        {{ $contacts->links('pagination::bootstrap-5') }}
+                    </div>
+                @endif
             </div>
         </div>
     @endif
@@ -156,6 +161,11 @@
                             </div>
                         @endforeach
                     </div>
+                    @if($messages->hasPages())
+                        <div class="mt-3">
+                            {{ $messages->links('pagination::bootstrap-5') }}
+                        </div>
+                    @endif
                 @endif
             </div>
 
@@ -170,7 +180,7 @@
                         @endif
 
                         <div class="input-group">
-                            <textarea name="message" class="form-control" rows="2" placeholder="Ketik pesan Anda di sini..." required style="resize: none;"></textarea>
+                            <textarea name="message" class="form-control" rows="2" maxlength="500" placeholder="Ketik pesan Anda di sini..." required style="resize: none;"></textarea>
                             <button class="btn btn-primary px-4 fw-semibold" type="submit">
                                 <i class="bi bi-send-fill me-1"></i> Kirim
                             </button>

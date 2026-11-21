@@ -24,7 +24,7 @@
             <div class="col-lg-5 d-flex flex-wrap justify-content-lg-end align-items-center gap-2">
                 <div class="stat-glass-pill">
                     <i class="bi bi-journals text-primary"></i>
-                    <span>Total: <strong class="text-slate-900">{{ $books->total() }}</strong> Judul</span>
+                    <span>Total: <strong id="book-result-total" class="text-slate-900">{{ $books->total() }}</strong> Judul</span>
                 </div>
 
                 @auth
@@ -56,7 +56,7 @@
         </div>
 
         {{-- Search Bar --}}
-        <form method="GET" action="{{ route('books.index') }}">
+        <form id="book-search-form" method="GET" action="{{ route('books.index') }}">
             @if(request()->filled('category_id'))
                 <input type="hidden" name="category_id" value="{{ request('category_id') }}">
             @endif
@@ -69,9 +69,9 @@
                     <div class="col-md-9 col-lg-10">
                         <div class="d-flex align-items-center ps-2">
                             <i class="bi bi-search text-primary fs-5 me-2"></i>
-                            <input type="text" name="search" class="form-control ps-1"
+                            <input id="book-search-input" type="text" name="search" class="form-control ps-1"
                                 placeholder="Ketik judul buku, nama penulis, penerbit, atau nomor ISBN..."
-                                value="{{ request('search') }}">
+                                value="{{ request('search') }}" autocomplete="off" aria-label="Cari buku">
                         </div>
                     </div>
                     <div class="col-md-3 col-lg-2 d-flex gap-1">
@@ -87,6 +87,8 @@
                 </div>
             </div>
         </form>
+        <p id="book-search-status" class="visually-hidden" aria-live="polite"></p>
+        <div id="book-search-error" class="alert alert-danger d-none" role="alert"></div>
 
         {{-- Interactive Filter Chips --}}
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-1">
@@ -135,29 +137,8 @@
     </div>
 
     {{-- Grid Kartu Buku --}}
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4">
-        @forelse($books as $book)
-            @include('books.partials.book-card', ['book' => $book])
-        @empty
-            <div class="col-12">
-                <div class="card border-0 p-5 text-center">
-                    <div class="mx-auto mb-3 d-inline-flex align-items-center justify-content-center rounded-circle bg-light" style="width: 64px; height: 64px;">
-                        <i class="bi bi-search fs-3 text-slate-600"></i>
-                    </div>
-                    <h5 class="fw-bold text-slate-900">Buku Tidak Ditemukan</h5>
-                    <p class="text-slate-600 small mb-3">Tidak ada buku yang cocok dengan kata kunci atau filter yang Anda pilih.</p>
-                    <div>
-                        <a href="{{ route('books.index') }}" class="btn btn-soft-primary btn-sm px-3">
-                            <i class="bi bi-arrow-counterclockwise"></i> Reset Filter Pencarian
-                        </a>
-                    </div>
-                </div>
-            </div>
-        @endforelse
-    </div>
-
-    <div class="mt-4">
-        {{ $books->links('pagination::bootstrap-5') }}
+    <div id="book-search-results" aria-busy="false" aria-live="polite">
+        @include('books.partials.results', ['books' => $books])
     </div>
 
     {{-- Modal Kategori khusus Admin --}}
@@ -166,4 +147,139 @@
             @include('admin.books.partials.category-modal')
         @endif
     @endauth
+
+    <script>
+        const bookSearchForm = document.getElementById('book-search-form');
+        const bookSearchInput = document.getElementById('book-search-input');
+        const bookSearchResults = document.getElementById('book-search-results');
+        const bookSearchTotal = document.getElementById('book-result-total');
+        const bookSearchStatus = document.getElementById('book-search-status');
+        const bookSearchError = document.getElementById('book-search-error');
+        let bookSearchTimer = null;
+        let bookSearchController = null;
+
+        const syncFilterChipsWithSearch = (searchValue) => {
+            document.querySelectorAll('a.filter-chip[href]').forEach((chip) => {
+                const url = new URL(chip.href, window.location.origin);
+                if (searchValue) {
+                    url.searchParams.set('search', searchValue);
+                } else {
+                    url.searchParams.delete('search');
+                }
+                url.searchParams.delete('page');
+                chip.href = url.toString();
+            });
+        };
+
+        const fetchCatalogResults = async (targetUrl, { pushHistory = false, scrollToResults = false } = {}) => {
+            if (bookSearchController) {
+                bookSearchController.abort();
+            }
+
+            const controller = new AbortController();
+            bookSearchController = controller;
+            bookSearchResults.setAttribute('aria-busy', 'true');
+            bookSearchStatus.textContent = 'Memuat hasil pencarian.';
+            bookSearchError.classList.add('d-none');
+
+            try {
+                const response = await fetch(targetUrl, {
+                    headers: { Accept: 'application/json' },
+                    signal: controller.signal,
+                });
+
+                if (!response.ok) {
+                    throw new Error('Pencarian buku gagal dimuat.');
+                }
+
+                const result = await response.json();
+
+                if (bookSearchController !== controller) {
+                    return;
+                }
+
+                bookSearchResults.innerHTML = result.html;
+                bookSearchTotal.textContent = new Intl.NumberFormat('id-ID').format(result.total);
+                bookSearchStatus.textContent = result.total === 0
+                    ? 'Tidak ada buku yang cocok.'
+                    : `Ditemukan ${result.total} buku.`;
+
+                const nextRelativeUrl = targetUrl.pathname + targetUrl.search;
+                if (pushHistory) {
+                    window.history.pushState(null, '', nextRelativeUrl);
+                } else {
+                    window.history.replaceState(null, '', nextRelativeUrl);
+                }
+
+                if (scrollToResults) {
+                    bookSearchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    return;
+                }
+
+                bookSearchError.textContent = 'Pencarian gagal dimuat. Silakan coba lagi.';
+                bookSearchError.classList.remove('d-none');
+                bookSearchStatus.textContent = 'Pencarian gagal dimuat.';
+            } finally {
+                if (bookSearchController === controller) {
+                    bookSearchController = null;
+                    bookSearchResults.setAttribute('aria-busy', 'false');
+                }
+            }
+        };
+
+        const searchBooks = () => {
+            const searchUrl = new URL(bookSearchForm.action, window.location.origin);
+            const query = new URLSearchParams(new FormData(bookSearchForm));
+            const trimmedSearch = bookSearchInput.value.trim();
+
+            if (trimmedSearch) {
+                query.set('search', trimmedSearch);
+            } else {
+                query.delete('search');
+            }
+
+            query.delete('page');
+            searchUrl.search = query.toString();
+            syncFilterChipsWithSearch(trimmedSearch);
+
+            return fetchCatalogResults(searchUrl, { pushHistory: false, scrollToResults: false });
+        };
+
+        bookSearchForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            window.clearTimeout(bookSearchTimer);
+            searchBooks();
+        });
+
+        bookSearchInput.addEventListener('input', () => {
+            window.clearTimeout(bookSearchTimer);
+
+            if (bookSearchController) {
+                bookSearchController.abort();
+            }
+
+            bookSearchTimer = window.setTimeout(searchBooks, 300);
+        });
+
+        bookSearchResults.addEventListener('click', (event) => {
+            const pageLink = event.target.closest('.pagination a.page-link');
+            if (!pageLink || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            event.preventDefault();
+            const targetUrl = new URL(pageLink.href, window.location.origin);
+            fetchCatalogResults(targetUrl, { pushHistory: true, scrollToResults: true });
+        });
+
+        window.addEventListener('popstate', () => {
+            const currentUrl = new URL(window.location.href);
+            bookSearchInput.value = currentUrl.searchParams.get('search') || '';
+            syncFilterChipsWithSearch(bookSearchInput.value.trim());
+            fetchCatalogResults(currentUrl, { pushHistory: false, scrollToResults: false });
+        });
+    </script>
 @endsection
