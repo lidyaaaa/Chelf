@@ -1,58 +1,113 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 📚 BookStore — Aplikasi Toko Buku Online
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi web manajemen toko buku berbasis **Laravel 12** & **Bootstrap 5** dengan pemisahan hak akses antara **Pelanggan (User)** dan **Admin Toko**. Dilengkapi dengan manajemen katalog buku & kategori, keranjang belanja, buku alamat pengiriman, transaksi real-time (dengan database row locking), cetak struk & kartu member, laporan penjualan (Web & Export CSV), serta fitur Live Chat antara pelanggan dan admin.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## ✨ Fitur Utama
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 👤 Pelanggan (User)
+- **Katalog & Detail Buku**: Pencarian buku berdasarkan judul, penulis, ISBN, dan filter kategori.
+- **Keranjang Belanja & Checkout**: Manajemen item keranjang dan buku alamat pengiriman.
+- **Transaksi & Struk Pembelian**: Pembelian langsung maupun lewat keranjang, pembatalan pesanan berstatus *menunggu*, dan cetak struk transaksi.
+- **Kartu Member Digital**: Cetak kartu anggota toko buku.
+- **Live Chat**: Konsultasi dan tanya jawab langsung dengan Admin Toko.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 🛠️ Admin Toko (Admin)
+- **Dashboard Analitik**: Ringkasan statistik penjualan, stok buku, pesanan menunggu konfirmasi, dan total pelanggan.
+- **CRUD Katalog Buku & Kategori**: Tambah, ubah, hapus buku (lengkap dengan upload sampul) serta manajemen kategori buku.
+- **Manajemen Transaksi & Kasir**: Input transaksi kasir langsung, konfirmasi/setujui pesanan pelanggan (satuan maupun sekaligus per pelanggan).
+- **Manajemen Pelanggan**: Daftar anggota terdaftar beserta riwayat pesanan dan kartu member.
+- **Laporan Penjualan**: Filter laporan transaksi dan unduh laporan dalam format **CSV**.
+- **Live Chat Admin**: Balas pesan dari seluruh pelanggan secara real-time.
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## 📸 Screenshots Aplikasi
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 🔐 Autentikasi
+| Halaman Login | Halaman Register |
+| :---: | :---: |
+| ![Login](documentation/login.png) | ![Register](documentation/register.png) |
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+---
 
-## Agentic Development
+### 👤 Tampilan Pelanggan (User)
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+| Dashboard Pelanggan | Katalog Buku |
+| :---: | :---: |
+| ![Dashboard User](documentation/user/dashboard.png) | ![Katalog User](documentation/user/katalog.png) |
 
-```bash
-composer require laravel/boost --dev
+| Card Buku | Detail Buku |
+| :---: | :---: |
+| ![Card Buku](documentation/user/card.png) | ![Detail Buku](documentation/user/detail.png) |
 
-php artisan boost:install
-```
+| Keranjang Belanja (Cart) | Riwayat Transaksi |
+| :---: | :---: |
+| ![Cart](documentation/user/cart.png) | ![Transaksi User](documentation/user/transaksi.png) |
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+| Live Chat Pelanggan | Tentang Kami (About) |
+| :---: | :---: |
+| ![Chat User](documentation/user/chat.png) | ![About](documentation/user/about.png) |
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 🛠️ Tampilan Admin
 
-## Code of Conduct
+| Dashboard Admin | Kelola Katalog Buku |
+| :---: | :---: |
+| ![Dashboard Admin](documentation/admin/dashboard.png) | ![Katalog Admin](documentation/admin/katalog.png) |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Kelola Transaksi | Laporan Penjualan |
+| :---: | :---: |
+| ![Transaksi Admin](documentation/admin/transaksi.png) | ![Laporan Admin](documentation/admin/laporan.png) |
 
-## Security Vulnerabilities
+| Daftar Pengguna | Live Chat Admin |
+| :---: | :---: |
+| ![Daftar Pengguna](documentation/admin/daftarpengguna.png) | ![Chat Admin](documentation/admin/chat.png) |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+#### CRUD Buku & Kategori
+| Tambah Buku | Edit Buku | Tambah Kategori |
+| :---: | :---: | :---: |
+| ![Tambah Buku](documentation/admin/crud/tambahbuku.png) | ![Edit Buku](documentation/admin/crud/editbuku.png) | ![Tambah Kategori](documentation/admin/crud/tambahkategori.png) |
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 🚀 Cara Instalasi & Menjalankan Project
+
+1. **Clone repository & masuk ke direktori project**
+   ```bash
+   git clone <url-repository-kamu>
+   cd bookstore
+   ```
+
+2. **Install dependensi PHP & JavaScript**
+   ```bash
+   composer install
+   npm install
+   ```
+
+3. **Salin file `.env` dan generate application key**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+
+4. **Konfigurasi database di `.env` lalu jalankan migrasi & seeder**
+   ```bash
+   php artisan migrate --seed
+   ```
+
+5. **Jalankan server aplikasi**
+   ```bash
+   php artisan serve
+   ```
+
+---
+
+## 🔑 Akun Default (Seeder)
+
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| **Admin Toko** | `admin@gmail.com` | `Admin12345` |
+| **Pelanggan (User)** | `siswa@gmail.com` | `Siswa12345` |
