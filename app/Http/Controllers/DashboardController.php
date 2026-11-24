@@ -7,11 +7,15 @@ use App\Models\Cart;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\User;
-
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    /**
+     * Halaman Dashboard utama setelah login.
+     * Memisahkan tampilan Dashboard Admin (statistik omzet, stok menipis, transaksi terbaru)
+     * dan Dashboard Pelanggan (ringkasan keranjang, total belanja, kartu member digital).
+     */
     public function index(Request $request)
     {
         Transaction::syncPendingTransactions();
@@ -25,6 +29,9 @@ class DashboardController extends Controller
         return $this->userDashboard($request, $user);
     }
 
+    /**
+     * Menyusun statistik dan tabel ringkasan untuk Dashboard Admin.
+     */
     protected function adminDashboard(Request $request)
     {
         $month = $request->filled('month') ? (int) $request->month : null;

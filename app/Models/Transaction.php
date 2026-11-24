@@ -42,6 +42,11 @@ class Transaction extends Model
         ];
     }
 
+    /**
+     * Hook otomatis saat data transaksi baru akan dibuat (creating).
+     * Membuat kode transaksi unik otomatis dengan format: TRX-YYYYMMDD-XXXX
+     * Contoh: TRX-20261124-A9F2
+     */
     protected static function booted(): void
     {
         static::creating(function (Transaction $transaction): void {
@@ -52,16 +57,25 @@ class Transaction extends Model
         });
     }
 
+    /**
+     * Relasi transaksi dimiliki oleh satu User (Pembeli).
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Relasi satu transaksi memiliki banyak rincian item buku yang dibeli.
+     */
     public function items(): HasMany
     {
         return $this->hasMany(TransactionItem::class);
     }
 
+    /**
+     * Relasi pesan chat yang dikaitkan dengan transaksi ini.
+     */
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);

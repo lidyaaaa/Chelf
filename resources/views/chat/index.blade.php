@@ -132,19 +132,19 @@
                         <i class="bi bi-chat-square-dots fs-1 d-block mb-2 text-primary opacity-50"></i>
                         <p class="mb-0">Pilih kontak pelanggan untuk memulai percakapan.</p>
                     </div>
-                @elseif($messages->isEmpty())
-                    <div class="text-center py-5 text-muted">
+                @else
+                    <div id="chatEmptyState" class="text-center py-5 text-muted {{ $messages->isEmpty() ? '' : 'd-none' }}">
                         <i class="bi bi-chat-heart fs-1 d-block mb-2 text-primary opacity-50"></i>
                         <p class="fw-semibold mb-1">Belum ada riwayat pesan.</p>
                         <p class="small mb-0">Kirim pesan pertama Anda di bawah ini untuk memulai percakapan!</p>
                     </div>
-                @else
-                    <div class="d-flex flex-column gap-3">
+
+                    <div id="chatMessagesList" class="d-flex flex-column gap-3">
                         @foreach($messages as $msg)
                             @php
                                 $isMe = $msg->sender_id === auth()->id();
                             @endphp
-                            <div class="d-flex {{ $isMe ? 'justify-content-end' : 'justify-content-start' }}">
+                            <div class="d-flex {{ $isMe ? 'justify-content-end' : 'justify-content-start' }}" data-message-id="{{ $msg->id }}">
                                 <div class="d-flex flex-column {{ $isMe ? 'align-items-end' : 'align-items-start' }}" style="max-width: 75%;">
                                     <div class="small text-muted mb-1 px-1" style="font-size: 0.72rem;">
                                         {{ $isMe ? 'Anda' : $msg->sender->name }} &bull; {{ $msg->created_at->format('H:i') }}
@@ -161,7 +161,8 @@
                             </div>
                         @endforeach
                     </div>
-                    @if($messages->hasPages())
+
+                    @if($messages instanceof \Illuminate\Pagination\LengthAwarePaginator && $messages->hasPages())
                         <div class="mt-3">
                             {{ $messages->links('pagination::bootstrap-5') }}
                         </div>
@@ -169,10 +170,22 @@
                 @endif
             </div>
 
-            {{-- Form Input Pesan --}}
+            {{-- Form Input Pesan (AJAX + Cooldown + Anti-Spam) --}}
             @if($activeUser)
                 <div class="card-footer bg-white border-top p-3">
-                    <form action="{{ route('chat.store') }}" method="POST" class="d-flex flex-column gap-2">
+                    <div id="chatFeedbackAlert" class="alert py-2 px-3 small mb-2 d-none" role="alert"></div>
+
+                    <form id="chatForm"
+                          action="{{ route('chat.store') }}"
+                          method="POST"
+                          class="d-flex flex-column gap-2"
+                          data-messages-url="{{ route('chat.messages') }}"
+                          data-active-user-id="{{ $activeUser->id }}"
+                          data-active-transaction-id="{{ $activeTransaction?->id ?? '' }}"
+                          data-cooldown-seconds="{{ $chatConfig['cooldown_seconds'] ?? 3 }}"
+                          data-initial-cooldown="{{ $chatConfig['cooldown_remaining'] ?? 0 }}"
+                          data-max-per-minute="{{ $chatConfig['max_per_minute'] ?? 15 }}"
+                          data-current-page="{{ $messages instanceof \Illuminate\Pagination\LengthAwarePaginator ? $messages->currentPage() : 1 }}">
                         @csrf
                         <input type="hidden" name="receiver_id" value="{{ $activeUser->id }}">
                         @if($activeTransaction)
@@ -180,10 +193,20 @@
                         @endif
 
                         <div class="input-group">
-                            <textarea name="message" class="form-control" rows="2" maxlength="500" placeholder="Ketik pesan Anda di sini..." required style="resize: none;"></textarea>
-                            <button class="btn btn-primary px-4 fw-semibold" type="submit">
+                            <textarea id="chatMessageInput" name="message" class="form-control" rows="2" maxlength="500" placeholder="Ketik pesan Anda di sini... (Enter untuk kirim, Shift+Enter baris baru)" required style="resize: none;"></textarea>
+                            <button id="chatSendButton" class="btn btn-primary px-4 fw-semibold" type="submit">
                                 <i class="bi bi-send-fill me-1"></i> Kirim
                             </button>
+                        </div>
+
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small text-muted" style="font-size: 0.76rem;">
+                            <span id="chatCooldownHint">
+                                <i class="bi bi-shield-check text-primary me-1"></i>
+                                Jeda {{ $chatConfig['cooldown_seconds'] ?? 3 }} detik antar pesan &bull; Maks {{ $chatConfig['max_per_minute'] ?? 15 }} pesan/menit
+                            </span>
+                            <span id="chatQuotaBadge" class="badge bg-light text-secondary border">
+                                Sisa kuota: {{ $chatConfig['remaining_per_minute'] ?? 15 }}/{{ $chatConfig['max_per_minute'] ?? 15 }} pesan
+                            </span>
                         </div>
                     </form>
                 </div>
@@ -193,11 +216,320 @@
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         const container = document.getElementById("chatMessagesContainer");
-        if (container) {
-            container.scrollTop = container.scrollHeight;
+        const messagesList = document.getElementById("chatMessagesList");
+        const emptyState = document.getElementById("chatEmptyState");
+        const chatForm = document.getElementById("chatForm");
+        const messageInput = document.getElementById("chatMessageInput");
+        const sendButton = document.getElementById("chatSendButton");
+        const feedbackAlert = document.getElementById("chatFeedbackAlert");
+        const quotaBadge = document.getElementById("chatQuotaBadge");
+
+        const scrollToBottom = () => {
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+            }
+        };
+
+        scrollToBottom();
+
+        if (!chatForm || !messageInput || !sendButton || !messagesList) {
+            return;
         }
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            || chatForm.querySelector('input[name="_token"]')?.value
+            || '';
+        const activeUserId = chatForm.dataset.activeUserId;
+        const activeTransactionId = chatForm.dataset.activeTransactionId;
+        const messagesUrl = chatForm.dataset.messagesUrl;
+        const defaultCooldown = parseInt(chatForm.dataset.cooldownSeconds || '3', 10);
+        const maxPerMinute = parseInt(chatForm.dataset.maxPerMinute || '15', 10);
+        const currentPage = parseInt(chatForm.dataset.currentPage || '1', 10);
+
+        const defaultButtonHtml = '<i class="bi bi-send-fill me-1"></i> Kirim';
+        let isSending = false;
+        let cooldownUntil = 0;
+        let cooldownTimer = null;
+
+        const getLastMessageId = () => {
+            const items = messagesList.querySelectorAll('[data-message-id]');
+            if (items.length === 0) {
+                return 0;
+            }
+            let maxId = 0;
+            items.forEach((el) => {
+                const id = parseInt(el.dataset.messageId || '0', 10);
+                if (id > maxId) {
+                    maxId = id;
+                }
+            });
+            return maxId;
+        };
+
+        const showFeedback = (text, type = 'warning') => {
+            if (!feedbackAlert) {
+                return;
+            }
+            feedbackAlert.textContent = text;
+            feedbackAlert.className = `alert alert-${type} py-2 px-3 small mb-2`;
+        };
+
+        const clearFeedback = () => {
+            if (!feedbackAlert) {
+                return;
+            }
+            feedbackAlert.classList.add('d-none');
+            feedbackAlert.textContent = '';
+        };
+
+        const updateQuota = (remaining, max) => {
+            if (!quotaBadge) {
+                return;
+            }
+            quotaBadge.textContent = `Sisa kuota: ${remaining}/${max} pesan`;
+            quotaBadge.className = remaining <= 3
+                ? 'badge bg-warning bg-opacity-25 text-dark border border-warning'
+                : 'badge bg-light text-secondary border';
+        };
+
+        const renderCooldownButton = () => {
+            const remainingMs = cooldownUntil - Date.now();
+            if (remainingMs <= 0) {
+                if (cooldownTimer) {
+                    clearInterval(cooldownTimer);
+                    cooldownTimer = null;
+                }
+                cooldownUntil = 0;
+                if (!isSending) {
+                    sendButton.disabled = false;
+                    sendButton.innerHTML = defaultButtonHtml;
+                }
+                return;
+            }
+
+            const secondsLeft = Math.ceil(remainingMs / 1000);
+            sendButton.disabled = true;
+            sendButton.innerHTML = `<i class="bi bi-hourglass-split me-1"></i> Tunggu ${secondsLeft}d`;
+        };
+
+        const startCooldown = (seconds) => {
+            if (!seconds || seconds <= 0) {
+                return;
+            }
+            cooldownUntil = Math.max(cooldownUntil, Date.now() + seconds * 1000);
+            renderCooldownButton();
+            if (cooldownTimer) {
+                clearInterval(cooldownTimer);
+            }
+            cooldownTimer = setInterval(renderCooldownButton, 250);
+        };
+
+        const appendMessageBubble = (msg) => {
+            if (!msg || !msg.id) {
+                return;
+            }
+            if (messagesList.querySelector(`[data-message-id="${msg.id}"]`)) {
+                return;
+            }
+
+            if (emptyState) {
+                emptyState.classList.add('d-none');
+            }
+
+            const isMe = Boolean(msg.is_me);
+
+            const row = document.createElement('div');
+            row.className = `d-flex ${isMe ? 'justify-content-end' : 'justify-content-start'}`;
+            row.dataset.messageId = String(msg.id);
+
+            const col = document.createElement('div');
+            col.className = `d-flex flex-column ${isMe ? 'align-items-end' : 'align-items-start'}`;
+            col.style.maxWidth = '75%';
+
+            const meta = document.createElement('div');
+            meta.className = 'small text-muted mb-1 px-1';
+            meta.style.fontSize = '0.72rem';
+            meta.textContent = `${msg.sender_name} • ${msg.created_at_time}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `p-3 rounded-4 shadow-sm ${isMe ? 'bg-primary text-white' : 'bg-white text-slate-800 border'}`;
+            bubble.style.wordBreak = 'break-word';
+
+            if (msg.transaction_id && (!activeTransactionId || String(msg.transaction_id) !== String(activeTransactionId))) {
+                const trxDiv = document.createElement('div');
+                trxDiv.className = `mb-1 pb-1 border-bottom ${isMe ? 'border-white-50 text-white-50' : 'border-light text-muted'}`;
+                trxDiv.style.fontSize = '0.72rem';
+
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-receipt me-1';
+                trxDiv.appendChild(icon);
+                trxDiv.appendChild(document.createTextNode('Pesanan: '));
+
+                const strong = document.createElement('strong');
+                strong.textContent = msg.transaction_code || '';
+                trxDiv.appendChild(strong);
+                bubble.appendChild(trxDiv);
+            }
+
+            const textDiv = document.createElement('div');
+            textDiv.style.whiteSpace = 'pre-wrap';
+            textDiv.style.fontSize = '0.92rem';
+            textDiv.textContent = msg.message;
+
+            bubble.appendChild(textDiv);
+            col.appendChild(meta);
+            col.appendChild(bubble);
+            row.appendChild(col);
+            messagesList.appendChild(row);
+        };
+
+        // Aktifkan cooldown awal jika user baru saja mengirim pesan lalu refresh
+        const initialCooldown = parseInt(chatForm.dataset.initialCooldown || '0', 10);
+        if (initialCooldown > 0) {
+            startCooldown(initialCooldown);
+        }
+
+        const sendChatMessage = async () => {
+            if (isSending) {
+                return;
+            }
+
+            if (cooldownUntil > Date.now()) {
+                const secondsLeft = Math.ceil((cooldownUntil - Date.now()) / 1000);
+                showFeedback(`Mohon tunggu ${secondsLeft} detik sebelum mengirim pesan berikutnya.`, 'warning');
+                return;
+            }
+
+            const rawText = messageInput.value.trim();
+            if (rawText === '') {
+                showFeedback('Pesan tidak boleh kosong.', 'warning');
+                messageInput.focus();
+                return;
+            }
+
+            if (rawText.length > 500) {
+                showFeedback('Pesan maksimal 500 karakter.', 'danger');
+                return;
+            }
+
+            isSending = true;
+            clearFeedback();
+            sendButton.disabled = true;
+            sendButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Mengirim...';
+
+            try {
+                const formData = new FormData(chatForm);
+                const response = await fetch(chatForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (response.status === 429) {
+                    const retryAfter = parseInt(data.retry_after || defaultCooldown, 10);
+                    showFeedback(data.message || `Terlalu cepat! Tunggu ${retryAfter} detik lagi.`, 'warning');
+                    startCooldown(retryAfter);
+                    return;
+                }
+
+                if (response.status === 422) {
+                    const validationMsg = data.errors?.message?.[0] || data.message || 'Pesan tidak valid.';
+                    showFeedback(validationMsg, 'danger');
+                    return;
+                }
+
+                if (!response.ok) {
+                    showFeedback(data.message || 'Gagal mengirim pesan. Silakan coba lagi.', 'danger');
+                    return;
+                }
+
+                if (data.message) {
+                    appendMessageBubble(data.message);
+                    scrollToBottom();
+                }
+
+                messageInput.value = '';
+                const charHint = messageInput.parentElement.querySelector(':scope > .char-limit-hint');
+                if (charHint) {
+                    charHint.classList.add('d-none');
+                }
+
+                if (typeof data.remaining_per_minute === 'number') {
+                    updateQuota(data.remaining_per_minute, data.max_per_minute || maxPerMinute);
+                }
+
+                startCooldown(parseInt(data.cooldown_seconds || defaultCooldown, 10));
+            } catch (error) {
+                showFeedback('Koneksi terganggu. Pesan gagal dikirim, silakan coba lagi.', 'danger');
+            } finally {
+                isSending = false;
+                if (cooldownUntil <= Date.now()) {
+                    sendButton.disabled = false;
+                    sendButton.innerHTML = defaultButtonHtml;
+                }
+            }
+        };
+
+        chatForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            sendChatMessage();
+        });
+
+        messageInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendChatMessage();
+            }
+        });
+
+        // Polling pesan masuk secara berkala (hanya di halaman 1 dan saat tab aktif)
+        let isPolling = false;
+        const pollNewMessages = async () => {
+            if (isPolling || currentPage !== 1 || document.visibilityState !== 'visible' || !messagesUrl || !activeUserId) {
+                return;
+            }
+
+            isPolling = true;
+            try {
+                const url = new URL(messagesUrl, window.location.origin);
+                url.searchParams.set('user_id', activeUserId);
+                url.searchParams.set('after_id', String(getLastMessageId()));
+
+                const response = await fetch(url.toString(), {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json().catch(() => ({}));
+                if (Array.isArray(data.messages) && data.messages.length > 0) {
+                    const isNearBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 120;
+                    data.messages.forEach(appendMessageBubble);
+                    if (isNearBottom) {
+                        scrollToBottom();
+                    }
+                }
+            } catch (error) {
+                // Abaikan error polling sementara agar tidak mengganggu pengguna
+            } finally {
+                isPolling = false;
+            }
+        };
+
+        setInterval(pollNewMessages, 4000);
     });
 </script>
 @endsection

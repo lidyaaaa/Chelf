@@ -24,11 +24,17 @@ class TransactionItem extends Model
         ];
     }
 
+    /**
+     * Relasi detail item ini milik satu Header Transaksi induk.
+     */
     public function transaction(): BelongsTo
     {
         return $this->belongsTo(Transaction::class);
     }
 
+    /**
+     * Relasi detail item ini merujuk ke satu Buku yang dibeli.
+     */
     public function book(): BelongsTo
     {
         return $this->belongsTo(Book::class);

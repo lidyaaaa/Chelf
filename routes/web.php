@@ -12,10 +12,17 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
+/*
+|--------------------------------------------------------------------------
+| 1. ROUTE PUBLIK (Bisa diakses siapa saja: Tamu / User / Admin)
+|--------------------------------------------------------------------------
+*/
 Route::get('/', [BookController::class, 'index'])->name('home');
 Route::get('/books', [BookController::class, 'index'])->name('books.index');
 Route::view('/about', 'about')->name('about');
 
+// Fallback route untuk menampilkan gambar sampul buku dari folder storage/app/public
+// Berguna agar gambar tetap muncul meskipun symlink 'php artisan storage:link' belum dibuat di Windows
 Route::get('/storage/{path}', function (string $path) {
     $fullPath = storage_path('app/public/'.$path);
     abort_unless(is_file($fullPath), 404);
@@ -23,6 +30,11 @@ Route::get('/storage/{path}', function (string $path) {
     return response()->file($fullPath);
 })->where('path', '.*');
 
+/*
+|--------------------------------------------------------------------------
+| 2. ROUTE TAMU / GUEST (Hanya untuk yang BELUM login)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'showRegister'])
         ->name('register');
@@ -35,7 +47,15 @@ Route::middleware('guest')->group(function () {
         ->name('login.store');
 });
 
+/*
+|--------------------------------------------------------------------------
+| 3. ROUTE TERAUTENTIKASI (Wajib sudah login: User maupun Admin)
+|--------------------------------------------------------------------------
+| Menggunakan middleware 'auth.forbidden' (RequireAuthenticatedUser) yang
+| menolak akses dengan HTTP 401 jika belum login.
+*/
 Route::middleware('auth.forbidden')->group(function () {
+    // Dashboard & Profil Akun
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
     Route::get('/profil', [UserController::class, 'editProfile'])
@@ -46,6 +66,8 @@ Route::middleware('auth.forbidden')->group(function () {
         ->name('logout');
     Route::get('/kartu-member/{user?}', [ReportController::class, 'memberCard'])
         ->name('member.card');
+
+    // Transaksi Pembelian, Pembatalan Pesanan, dan Cetak Struk
     Route::get('/transaksi', [TransactionController::class, 'index'])
         ->name('transactions.index');
     Route::post('/books/{book}/beli', [TransactionController::class, 'store'])
@@ -55,11 +77,20 @@ Route::middleware('auth.forbidden')->group(function () {
     Route::get('/transaksi/{transaction}/struk', [TransactionController::class, 'receipt'])
         ->name('transactions.receipt');
 
+    // Fitur Live Chat antara Pelanggan dan Admin (AJAX Polling & Send)
     Route::get('/chat', [ChatController::class, 'index'])
         ->name('chat.index');
+    Route::get('/chat/messages', [ChatController::class, 'messages'])
+        ->name('chat.messages');
     Route::post('/chat', [ChatController::class, 'store'])
         ->name('chat.store');
 
+    /*
+    |----------------------------------------------------------------------
+    | 3A. ROUTE KHUSUS PELANGGAN (role:user)
+    |----------------------------------------------------------------------
+    | Mengelola keranjang belanja, checkout pesanan, dan buku alamat pengiriman.
+    */
     Route::middleware('role:user')->group(function () {
         Route::get('/keranjang', [CartController::class, 'index'])
             ->name('cart.index');
@@ -79,7 +110,14 @@ Route::middleware('auth.forbidden')->group(function () {
             ->name('addresses.destroy');
     });
 
+    /*
+    |----------------------------------------------------------------------
+    | 3B. ROUTE KHUSUS ADMIN TOKO (role:admin)
+    |----------------------------------------------------------------------
+    | Mengelola CRUD Buku, CRUD Kategori, Persetujuan Transaksi, Daftar Member, & Laporan CSV.
+    */
     Route::middleware('role:admin')->group(function () {
+        // CRUD Katalog Buku
         Route::get('/books/create', [BookController::class, 'create'])
             ->name('books.create');
         Route::post('/books', [BookController::class, 'store'])
@@ -91,6 +129,7 @@ Route::middleware('auth.forbidden')->group(function () {
         Route::delete('/books/{book}', [BookController::class, 'destroy'])
             ->name('books.destroy');
 
+        // CRUD Kategori Buku
         Route::post('/categories', [CategoryController::class, 'store'])
             ->name('categories.store');
         Route::put('/categories/{category}', [CategoryController::class, 'update'])
@@ -98,6 +137,7 @@ Route::middleware('auth.forbidden')->group(function () {
         Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
             ->name('categories.destroy');
 
+        // Input Kasir & Konfirmasi / Setujui Pesanan Pelanggan
         Route::post('/transaksi/kasir', [TransactionController::class, 'storeByAdmin'])
             ->name('transactions.store-admin');
         Route::post('/transaksi/{transaction}/setujui', [TransactionController::class, 'approve'])
@@ -105,6 +145,7 @@ Route::middleware('auth.forbidden')->group(function () {
         Route::post('/users/{user}/setujui-semua', [TransactionController::class, 'approveAll'])
             ->name('transactions.approve-all');
 
+        // Manajemen Pelanggan & Laporan Penjualan (Web + Export CSV)
         Route::get('/users', [UserController::class, 'index'])
             ->name('users.index');
 

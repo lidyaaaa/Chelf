@@ -20,16 +20,26 @@ class Cart extends Model
         ];
     }
 
+    /**
+     * Relasi item keranjang dimiliki oleh satu User (Pelanggan).
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Relasi item keranjang merujuk ke satu Buku di katalog.
+     */
     public function book(): BelongsTo
     {
         return $this->belongsTo(Book::class);
     }
 
+    /**
+     * Accessor ($cart->subtotal) untuk menghitung harga total per baris keranjang
+     * secara otomatis: jumlah buku x harga satuan buku.
+     */
     public function getSubtotalAttribute(): int
     {
         return (int) $this->jumlah * (int) ($this->book->harga ?? 0);

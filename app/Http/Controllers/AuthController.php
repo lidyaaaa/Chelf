@@ -10,11 +10,19 @@ use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
+    /**
+     * Menampilkan halaman form registrasi akun pelanggan baru.
+     */
     public function showRegister()
     {
         return view('auth.register');
     }
 
+    /**
+     * Memproses pendaftaran akun pelanggan baru.
+     * - Memvalidasi nama, email unik, nomor telepon (10-13 digit), dan password kuat.
+     * - Otomatis memberikan role 'user' dan nomor_anggota otomatis (MBR-YYYY-XXXX) dari Model User.
+     */
     public function register(Request $request)
     {
         $data = $request->validate([
@@ -49,11 +57,18 @@ class AuthController extends Controller
             ->with('success', 'Registrasi akun berhasil. Silakan login untuk mulai berbelanja.');
     }
 
+    /**
+     * Menampilkan halaman form login.
+     */
     public function showLogin()
     {
         return view('auth.login');
     }
 
+    /**
+     * Memproses autentikasi login (Admin maupun Pelanggan).
+     * Setelah berhasil login, session ID di-regenerate untuk mencegah serangan Session Fixation.
+     */
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -75,6 +90,9 @@ class AuthController extends Controller
             ->onlyInput('email');
     }
 
+    /**
+     * Memproses logout pengguna, menghapus session aktif, dan me-regenerate CSRF token.
+     */
     public function logout(Request $request)
     {
         Auth::logout();

@@ -41,7 +41,7 @@
                             $cartCount = (int) auth()->user()->carts()->sum('jumlah');
                         @endphp
                         <a href="{{ route('cart.index') }}" class="btn btn-primary">
-                            <i class="bi bi-cart3"></i> Keranjang Saya ({{ $cartCount }})
+                            <i class="bi bi-cart3"></i> Keranjang Saya (<span data-cart-count-text>{{ $cartCount }}</span>)
                         </a>
                         <a href="{{ route('transactions.index') }}" class="btn btn-soft-primary bg-white">
                             <i class="bi bi-receipt"></i> Pesanan Saya

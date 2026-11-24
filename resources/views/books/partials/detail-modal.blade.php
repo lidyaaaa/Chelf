@@ -80,7 +80,7 @@
                                 @if(auth()->user()->role === 'user')
                                     @if($book->stok > 0)
                                         <form action="{{ route('cart.store', $book) }}" method="POST"
-                                            class="p-3 rounded-4" style="background: #eff6ff; border: 1px solid #bfdbfe;">
+                                            class="p-3 rounded-4 js-cart-add-form" data-book-id="{{ $book->id }}" style="background: #eff6ff; border: 1px solid #bfdbfe;">
                                             @csrf
                                             <label class="form-label small fw-bold text-slate-900 mb-2">
                                                 <i class="bi bi-cart-plus text-primary me-1"></i>

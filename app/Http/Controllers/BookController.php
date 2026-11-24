@@ -7,21 +7,27 @@ use App\Models\Category;
 use App\Models\Transaction;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 
 class BookController extends Controller
 {
     /**
-     * Halaman Katalog Bookstore
-     * Mendukung pencarian cepat (Judul, Penulis, Kategori, ISBN)
-     * serta filter ketersediaan stok.
+     * Halaman Katalog Bookstore (Publik, Pelanggan, dan Admin).
+     * Mendukung:
+     * - Pencarian cepat (Judul, Penulis, Penerbit, ISBN, Nama Kategori, Kode Rak/DDC)
+     * - Filter kategori & ketersediaan stok (Tersedia / Habis)
+     * - Pengurutan (Terbaru, Harga Termurah, Harga Termahal, A-Z)
+     * - Live Search AJAX (mengembalikan JSON partial HTML jika diminta via fetch)
      */
     public function index(Request $request)
     {
+        // Eager loading relasi category, jumlah di keranjang, dan total eksemplar terjual
         $query = Book::query()
             ->with('category')
             ->withCount('carts')
             ->withSum(['transactionItems as terjual_count' => function ($q): void {
+                // Hanya hitung transaksi yang tidak dibatalkan
                 $q->whereHas('transaction', fn ($tq) => $tq->where('status', '!=', Transaction::STATUS_DIBATALKAN));
             }], 'jumlah')
             ->when($request->filled('search'), function ($query) use ($request): void {
@@ -48,20 +54,22 @@ class BookController extends Controller
                 $query->where('stok', '<=', 0);
             });
 
-        if ($request->sort === 'termurah'){
+        // Pengurutan katalog berdasarkan pilihan dropdown sort
+        if ($request->sort === 'termurah') {
             $query->orderBy('harga', 'asc');
-        }else if($request->sort === 'termahal'){
+        } elseif ($request->sort === 'termahal') {
             $query->orderBy('harga', 'desc');
-        }else if($request->sort === 'az'){
+        } elseif ($request->sort === 'az') {
             $query->orderBy('judul', 'asc');
-        }
-        else {
+        } else {
             $query->latest()->latest('id');
         }
 
+        // Pengunjung tamu (belum login) dibatasi preview 8 buku halaman pertama,
+        // sedangkan user yang sudah login mendapatkan pagination penuh.
         if (! auth()->check()) {
             $guestBooks = $query->limit(8)->get();
-            $books = new \Illuminate\Pagination\LengthAwarePaginator(
+            $books = new LengthAwarePaginator(
                 $guestBooks,
                 $guestBooks->count(),
                 8,
@@ -75,6 +83,8 @@ class BookController extends Controller
                 ->withQueryString();
         }
 
+        // Jika request berasal dari Live Search AJAX (fetch dengan header Accept: application/json),
+        // kembalikan potongan HTML kartu buku beserta total judul.
         if ($request->expectsJson()) {
             return response()->json([
                 'html' => view('books.partials.results', compact('books'))->render(),
@@ -87,6 +97,9 @@ class BookController extends Controller
         return view('books.index', compact('books', 'categories'));
     }
 
+    /**
+     * Menampilkan form tambah buku baru (Khusus Admin).
+     */
     public function create()
     {
         $categories = Category::withCount('books')->orderBy('nama')->get();
@@ -94,6 +107,9 @@ class BookController extends Controller
         return view('admin.books.create', compact('categories'));
     }
 
+    /**
+     * Menyimpan buku baru ke database beserta upload gambar sampul (Khusus Admin).
+     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -106,6 +122,8 @@ class BookController extends Controller
                 'string',
                 'max:17',
                 'regex:/^[0-9]+(?:-[0-9]+)*$/',
+                // Validasi custom: normalisasi ISBN dengan menghapus tanda strip (-)
+                // agar ISBN yang angkanya sama tetap terdeteksi duplikat meskipun beda posisi strip
                 function (string $attribute, mixed $value, Closure $fail): void {
                     $normalizedIsbn = (string) preg_replace('/\D/', '', (string) $value);
 
@@ -137,6 +155,7 @@ class BookController extends Controller
             'harga.min' => 'Harga buku tidak boleh bernilai minus.',
         ]);
 
+        // Jika admin mengisi input 'kategori_baru', otomatis buat kategori tersebut
         if ($request->filled('kategori_baru')) {
             $newCat = Category::firstOrCreate([
                 'nama' => trim((string) $request->kategori_baru),
@@ -145,11 +164,13 @@ class BookController extends Controller
         }
         unset($data['kategori_baru']);
 
+        // Pastikan stok minimal 0 (tidak boleh negatif)
         $data['stok'] = max(0, (int) $data['stok']);
         $data['total_koleksi'] = $data['stok'];
         $data['penerbit'] = $data['penerbit'] ?? '-';
         $data['tahun_terbit'] = $data['tahun_terbit'] ?? date('Y');
 
+        // Simpan file gambar cover ke storage/app/public/covers
         if ($request->hasFile('cover')) {
             $data['cover'] = $request->file('cover')->store('covers', 'public');
         }
@@ -161,6 +182,9 @@ class BookController extends Controller
             ->with('success', 'Buku baru berhasil ditambahkan ke katalog toko.');
     }
 
+    /**
+     * Menampilkan form edit data buku (Khusus Admin).
+     */
     public function edit(Book $book)
     {
         $categories = Category::withCount('books')->orderBy('nama')->get();
@@ -168,8 +192,13 @@ class BookController extends Controller
         return view('admin.books.edit', compact('book', 'categories'));
     }
 
+    /**
+     * Memperbarui data buku yang sudah ada (Khusus Admin).
+     */
     public function update(Request $request, Book $book)
     {
+        // Pada validasi unique judul & isbn, sertakan ID buku saat ini (.$book->id)
+        // agar tidak dianggap duplikat dengan dirinya sendiri saat disimpan.
         $data = $request->validate([
             'category_id' => 'nullable|exists:categories,id',
             'kategori_baru' => 'nullable|string|max:25',
@@ -203,6 +232,7 @@ class BookController extends Controller
         unset($data['kategori_baru']);
 
         $data['stok'] = max(0, (int) $data['stok']);
+        // Hitung ulang total_koleksi = stok tersedia saat ini + jumlah buku yang sudah terjual
         $soldCount = (int) $book->transactionItems()
             ->whereHas('transaction', fn ($q) => $q->where('status', '!=', Transaction::STATUS_DIBATALKAN))
             ->sum('jumlah');
@@ -210,6 +240,7 @@ class BookController extends Controller
         $data['penerbit'] = $data['penerbit'] ?? '-';
         $data['tahun_terbit'] = $data['tahun_terbit'] ?? date('Y');
 
+        // Jika admin mengupload cover baru, hapus file cover lama dari storage agar tidak menumpuk
         if ($request->hasFile('cover')) {
             if ($book->cover) {
                 Storage::disk('public')->delete($book->cover);
@@ -226,7 +257,10 @@ class BookController extends Controller
     }
 
     /**
-     * Buku hanya dapat dihapus saat stoknya kosong dan tidak berada di keranjang pengguna.
+     * Menghapus buku dari katalog (Khusus Admin).
+     * Aturan Referential Integrity:
+     * 1. Buku TIDAK BISA dihapus jika stoknya masih ada (stok > 0).
+     * 2. Buku TIDAK BISA dihapus jika sedang berada di dalam keranjang belanja pelanggan.
      */
     public function destroy(Book $book)
     {

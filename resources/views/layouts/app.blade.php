@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'BookStore — Toko Buku')</title>
 
     {{-- Google Fonts: Plus Jakarta Sans & JetBrains Mono --}}
@@ -161,6 +162,17 @@
                 </div>
             </div>
         @include('layouts.partials.book-delete-confirmation-modal')
+        @else
+            <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090; margin-top: 68px;">
+                <div id="cart-action-toast" class="toast border-0 shadow" role="alert" aria-live="polite" aria-atomic="true">
+                    <div class="toast-header">
+                        <i id="cart-action-toast-icon" class="bi bi-cart-check-fill text-success me-2"></i>
+                        <strong id="cart-action-toast-title" class="me-auto">Keranjang Belanja</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Tutup"></button>
+                    </div>
+                    <div id="cart-action-toast-message" class="toast-body small"></div>
+                </div>
+            </div>
         @endif
 
         @include('layouts.partials.logout-confirmation-modal')
@@ -344,6 +356,200 @@
             const isOverLimit = len > max;
             hint.className = 'char-limit-hint small mt-1 w-100 ' + (isOverLimit ? 'text-danger fw-semibold' : 'text-muted');
         });
+
+        // AJAX + Cooldown anti double-click untuk tombol Tambah ke Keranjang (.js-cart-add-form)
+        (function () {
+            const cartInFlight = new Set();
+            const cartCooldownUntil = new Map();
+            const cartCooldownTimers = new Map();
+            const cartToastEl = document.getElementById('cart-action-toast');
+            const cartToastIcon = document.getElementById('cart-action-toast-icon');
+            const cartToastTitle = document.getElementById('cart-action-toast-title');
+            const cartToastMessage = document.getElementById('cart-action-toast-message');
+
+            const showCartToast = (message, variant = 'success') => {
+                if (!cartToastEl || !cartToastMessage) {
+                    return;
+                }
+                const styles = {
+                    success: { icon: 'bi bi-cart-check-fill text-success me-2', title: 'Berhasil Ditambahkan' },
+                    warning: { icon: 'bi bi-hourglass-split text-warning me-2', title: 'Tunggu Sebentar' },
+                    danger: { icon: 'bi bi-exclamation-circle-fill text-danger me-2', title: 'Gagal Menambahkan' },
+                };
+                const style = styles[variant] || styles.success;
+                if (cartToastIcon) {
+                    cartToastIcon.className = style.icon;
+                }
+                if (cartToastTitle) {
+                    cartToastTitle.textContent = style.title;
+                }
+                cartToastMessage.textContent = message;
+                bootstrap.Toast.getOrCreateInstance(cartToastEl, { delay: 3000 }).show();
+            };
+
+            const syncCartCountUI = (count) => {
+                if (typeof count !== 'number') {
+                    return;
+                }
+                document.querySelectorAll('[data-cart-count-badge]').forEach((badge) => {
+                    if (count > 0) {
+                        badge.className = 'badge rounded-pill bg-danger ms-1';
+                        badge.textContent = String(count);
+                    } else {
+                        badge.className = 'text-slate-500 ms-1';
+                        badge.textContent = '(0)';
+                    }
+                });
+                document.querySelectorAll('[data-cart-count-text]').forEach((el) => {
+                    el.textContent = String(count);
+                });
+            };
+
+            const getBookSubmitButtons = (bookId) => {
+                return Array.from(document.querySelectorAll(`.js-cart-add-form[data-book-id="${bookId}"] button[type="submit"]`));
+            };
+
+            const restoreButtons = (buttons) => {
+                buttons.forEach((btn) => {
+                    btn.disabled = false;
+                    if (btn.dataset.originalHtml) {
+                        btn.innerHTML = btn.dataset.originalHtml;
+                    }
+                });
+            };
+
+            const startBookCooldown = (bookId, seconds) => {
+                if (!seconds || seconds <= 0) {
+                    return;
+                }
+                const until = Date.now() + seconds * 1000;
+                cartCooldownUntil.set(bookId, Math.max(cartCooldownUntil.get(bookId) || 0, until));
+
+                const tick = () => {
+                    const remainingMs = (cartCooldownUntil.get(bookId) || 0) - Date.now();
+                    const buttons = getBookSubmitButtons(bookId);
+
+                    if (remainingMs <= 0) {
+                        const existingTimer = cartCooldownTimers.get(bookId);
+                        if (existingTimer) {
+                            clearInterval(existingTimer);
+                            cartCooldownTimers.delete(bookId);
+                        }
+                        cartCooldownUntil.delete(bookId);
+                        if (!cartInFlight.has(bookId)) {
+                            restoreButtons(buttons);
+                        }
+                        return;
+                    }
+
+                    const secs = Math.ceil(remainingMs / 1000);
+                    buttons.forEach((btn) => {
+                        if (!btn.dataset.originalHtml) {
+                            btn.dataset.originalHtml = btn.innerHTML;
+                        }
+                        btn.disabled = true;
+                        btn.innerHTML = `<i class="bi bi-hourglass-split"></i> Tunggu ${secs}d`;
+                    });
+                };
+
+                tick();
+                const oldTimer = cartCooldownTimers.get(bookId);
+                if (oldTimer) {
+                    clearInterval(oldTimer);
+                }
+                cartCooldownTimers.set(bookId, setInterval(tick, 250));
+            };
+
+            document.addEventListener('submit', async function (event) {
+                const form = event.target.closest('.js-cart-add-form');
+                if (!form) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const bookId = form.dataset.bookId || form.action;
+                const submitter = event.submitter || form.querySelector('button[type="submit"]');
+
+                if (cartInFlight.has(bookId)) {
+                    return;
+                }
+
+                const existingUntil = cartCooldownUntil.get(bookId) || 0;
+                if (existingUntil > Date.now()) {
+                    const secs = Math.ceil((existingUntil - Date.now()) / 1000);
+                    showCartToast(`Mohon tunggu ${secs} detik sebelum menambahkan buku ini lagi.`, 'warning');
+                    return;
+                }
+
+                const formButtons = Array.from(form.querySelectorAll('button[type="submit"]'));
+                formButtons.forEach((btn) => {
+                    if (!btn.dataset.originalHtml) {
+                        btn.dataset.originalHtml = btn.innerHTML;
+                    }
+                    btn.disabled = true;
+                });
+
+                if (submitter) {
+                    submitter.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Memproses...';
+                }
+
+                cartInFlight.add(bookId);
+
+                try {
+                    const formData = new FormData(form);
+                    if (submitter && submitter.name) {
+                        formData.set(submitter.name, submitter.value);
+                    }
+
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                        || form.querySelector('input[name="_token"]')?.value
+                        || '';
+
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: formData,
+                    });
+
+                    const data = await response.json().catch(() => ({}));
+
+                    if (response.status === 429) {
+                        const retryAfter = parseInt(data.retry_after || '2', 10);
+                        showCartToast(data.message || `Tunggu ${retryAfter} detik sebelum menambahkan lagi.`, 'warning');
+                        startBookCooldown(bookId, retryAfter);
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        showCartToast(data.message || 'Gagal menambahkan buku ke keranjang.', 'danger');
+                        restoreButtons(formButtons);
+                        return;
+                    }
+
+                    if (typeof data.cart_count === 'number') {
+                        syncCartCountUI(data.cart_count);
+                    }
+
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                        return;
+                    }
+
+                    showCartToast(data.message || 'Buku berhasil ditambahkan ke keranjang.', 'success');
+                    startBookCooldown(bookId, parseInt(data.cooldown_seconds || '2', 10));
+                } catch (error) {
+                    showCartToast('Koneksi terganggu. Silakan coba lagi.', 'danger');
+                    restoreButtons(formButtons);
+                } finally {
+                    cartInFlight.delete(bookId);
+                }
+            });
+        })();
     </script>
 </body>
 

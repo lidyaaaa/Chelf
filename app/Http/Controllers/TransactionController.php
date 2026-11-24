@@ -15,8 +15,14 @@ use Illuminate\Validation\ValidationException;
 
 class TransactionController extends Controller
 {
+    /**
+     * Menampilkan halaman daftar transaksi.
+     * Otomatis memisahkan tampilan antara Admin (Manajemen Seluruh Pesanan)
+     * dan Pelanggan (Pesanan Saya & Riwayat Belanja).
+     */
     public function index(Request $request)
     {
+        // Sinkronisasi pesanan berstatus 'menunggu' yang memiliki user & metode pembayaran sama
         Transaction::syncPendingTransactions();
 
         $user = auth()->user();
@@ -224,11 +230,14 @@ class TransactionController extends Controller
             ])->withInput();
         }
 
+        // Gunakan DB::transaction + lockForUpdate() agar aman dari race condition
+        // (misal 2 pembeli membeli buku terakhir di detik yang bersamaan)
         $transaction = DB::transaction(function () use ($user, $data, $alamatFinal): Transaction {
             $query = Cart::with('book')
                 ->where('user_id', $user->id)
                 ->lockForUpdate();
 
+            // Hanya proses item keranjang yang dicentang oleh pelanggan
             if (! empty($data['cart_ids'])) {
                 $query->whereIn('id', $data['cart_ids']);
             }
@@ -246,6 +255,7 @@ class TransactionController extends Controller
             $preparedItems = [];
 
             foreach ($cartItems as $item) {
+                // Kunci baris buku di database selama transaksi berlangsung
                 $lockedBook = Book::whereKey($item->book_id)
                     ->lockForUpdate()
                     ->first();
@@ -256,6 +266,7 @@ class TransactionController extends Controller
                     ]);
                 }
 
+                // Cek ulang apakah stok di gudang masih mencukupi jumlah yang ingin dibeli
                 if ($lockedBook->stok < $item->jumlah) {
                     throw ValidationException::withMessages([
                         'cart' => sprintf(
@@ -284,6 +295,7 @@ class TransactionController extends Controller
                 ];
             }
 
+            // Buat Header Transaksi dengan status awal 'menunggu' (menunggu verifikasi Admin)
             $trx = Transaction::create([
                 'user_id' => $user->id,
                 'tanggal_transaksi' => today(),
@@ -295,10 +307,12 @@ class TransactionController extends Controller
                 'catatan' => $data['catatan'] ?? null,
             ]);
 
+            // Simpan masing-masing buku ke tabel detail (transaction_items)
             foreach ($preparedItems as $prepared) {
                 $trx->items()->create($prepared);
             }
 
+            // Hapus hanya item keranjang yang tadi dicentang (item yang tidak dicentang tetap ada di keranjang)
             Cart::where('user_id', $user->id)
                 ->whereIn('id', $cartItems->pluck('id'))
                 ->delete();
@@ -396,6 +410,10 @@ class TransactionController extends Controller
             ->with('success', sprintf('Transaksi pembelian [%s] berhasil dicatat.', $transaction->kode_transaksi));
     }
 
+    /**
+     * Input penjualan kasir langsung dari halaman Admin.
+     * Transaksi kasir otomatis berstatus 'selesai' karena pembayaran diterima langsung di tempat.
+     */
     public function storeByAdmin(Request $request)
     {
         $request->validate([
@@ -430,6 +448,9 @@ class TransactionController extends Controller
         ));
     }
 
+    /**
+     * Admin menyetujui seluruh transaksi 'menunggu' milik satu pelanggan sekaligus.
+     */
     public function approveAll(User $user)
     {
         $pendingList = $user->transactions()
@@ -478,10 +499,12 @@ class TransactionController extends Controller
 
     /**
      * Membatalkan transaksi yang masih berstatus 'menunggu' dan mengembalikan stok buku.
+     * Bisa dilakukan oleh Pelanggan pemilik pesanan maupun oleh Admin.
      */
     public function cancel(Transaction $transaction)
     {
         $user = auth()->user();
+        // Validasi kepemilikan: hanya pemilik transaksi atau Admin yang boleh membatalkan
         abort_unless($user->role === 'admin' || $transaction->user_id === $user->id, 403);
 
         if ($transaction->status !== Transaction::STATUS_MENUNGGU) {
@@ -496,10 +519,12 @@ class TransactionController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            // Guard idempotency: jika sudah tidak 'menunggu', jangan kembalikan stok 2 kali
             if ($lockedTrx->status !== Transaction::STATUS_MENUNGGU) {
                 return;
             }
 
+            // Kembalikan (increment) stok masing-masing buku yang ada di transaksi ini
             foreach ($lockedTrx->items as $item) {
                 Book::whereKey($item->book_id)
                     ->lockForUpdate()
@@ -517,9 +542,13 @@ class TransactionController extends Controller
             ->with('success', sprintf('Transaksi [%s] berhasil dibatalkan dan stok buku telah dikembalikan.', $transaction->kode_transaksi));
     }
 
+    /**
+     * Menampilkan halaman Struk Pembelian (Receipt) yang siap dicetak (print-friendly).
+     */
     public function receipt(Transaction $transaction)
     {
         $user = auth()->user();
+        // Hanya pemilik pesanan atau Admin yang boleh melihat struk transaksi ini
         abort_unless($user->role === 'admin' || $transaction->user_id === $user->id, 403);
 
         $transaction->load(['items.book.category', 'user']);

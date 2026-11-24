@@ -9,7 +9,7 @@
                 <i class="bi bi-cart3 text-primary me-1"></i> Keranjang Belanja Saya
             </h2>
             <p class="text-slate-600 mb-0 small">
-                Centang produk yang ingin di-checkout, atur jumlah dengan tombol <code>-</code> / <code>+</code>, dan pilih alamat pengiriman.
+                Centang produk yang ingin di-checkout, ketik jumlah atau gunakan tombol <code>-</code> / <code>+</code>, dan pilih alamat pengiriman.
             </p>
         </div>
 
@@ -78,16 +78,26 @@
                                         Rp {{ number_format($hargaSatuan, 0, ',', '.') }}
                                     </td>
                                     <td class="text-center">
-                                        <div class="d-inline-flex align-items-center border rounded-3 bg-white p-1">
+                                        <div class="d-inline-flex align-items-center border rounded-3 bg-white p-1 gap-1">
                                             <button type="button"
                                                 class="btn btn-sm btn-light border-0 px-2 py-1 fw-bold btn-qty-minus"
                                                 onclick="changeCartQty({{ $item->id }}, -1)"
                                                 @disabled($item->jumlah <= 1)>
                                                 <i class="bi bi-dash-lg"></i>
                                             </button>
-                                            <span class="px-3 fw-bold text-slate-900 cart-qty-display" style="min-width: 36px; text-align: center;">
-                                                {{ $item->jumlah }}
-                                            </span>
+                                            <input type="text"
+                                                inputmode="numeric"
+                                                pattern="[0-9]*"
+                                                class="form-control form-control-sm text-center fw-bold text-slate-900 cart-qty-display px-1"
+                                                style="width: 58px; border: 1px solid #cbd5e1; background: #f8fafc;"
+                                                value="{{ $item->jumlah }}"
+                                                data-min="1"
+                                                data-max="{{ $maxStok }}"
+                                                aria-label="Jumlah {{ $item->book->judul ?? 'buku' }}"
+                                                onfocus="this.select()"
+                                                oninput="handleCartQtyInput({{ $item->id }}, this)"
+                                                onblur="commitCartQty({{ $item->id }}, this)"
+                                                onkeydown="if(event.key === 'Enter'){ event.preventDefault(); this.blur(); }">
                                             <button type="button"
                                                 class="btn btn-sm btn-light border-0 px-2 py-1 fw-bold btn-qty-plus"
                                                 onclick="changeCartQty({{ $item->id }}, 1)"
@@ -95,6 +105,7 @@
                                                 <i class="bi bi-plus-lg"></i>
                                             </button>
                                         </div>
+                                        <div class="text-muted mt-1" style="font-size: 0.7rem;">Maks: {{ $maxStok }}</div>
                                     </td>
                                     <td class="fw-extrabold text-primary cart-subtotal-display">
                                         Rp {{ number_format($item->subtotal, 0, ',', '.') }}
@@ -250,22 +261,79 @@
             }
         }
 
-        async function changeCartQty(cartId, delta) {
+        const cartQtyTimers = {};
+
+        function changeCartQty(cartId, delta) {
             const row = document.getElementById('cart-row-' + cartId);
             if (!row) return;
 
             const currentQty = parseInt(row.getAttribute('data-qty'), 10) || 1;
+            setCartQty(cartId, currentQty + delta, true);
+        }
+
+        function handleCartQtyInput(cartId, inputEl) {
+            const row = document.getElementById('cart-row-' + cartId);
+            if (!row) return;
+
+            const digitsOnly = inputEl.value.replace(/[^0-9]/g, '');
+            if (inputEl.value !== digitsOnly) {
+                inputEl.value = digitsOnly;
+            }
+
+            if (digitsOnly === '') {
+                clearTimeout(cartQtyTimers[cartId]);
+                return;
+            }
+
+            const maxStok = parseInt(row.getAttribute('data-max'), 10) || 1;
+            const price = parseInt(row.getAttribute('data-price'), 10) || 0;
+
+            let newQty = parseInt(digitsOnly, 10);
+            if (isNaN(newQty) || newQty < 1) {
+                newQty = 1;
+            }
+            if (newQty > maxStok) {
+                newQty = maxStok;
+                inputEl.value = String(newQty);
+            }
+
+            row.setAttribute('data-qty', newQty);
+            row.querySelector('.cart-subtotal-display').textContent = formatRupiah(newQty * price);
+            row.querySelector('.btn-qty-minus').disabled = newQty <= 1;
+            row.querySelector('.btn-qty-plus').disabled = newQty >= maxStok;
+            recalculateCartSummary();
+
+            clearTimeout(cartQtyTimers[cartId]);
+            cartQtyTimers[cartId] = setTimeout(() => setCartQty(cartId, newQty, false), 450);
+        }
+
+        function commitCartQty(cartId, inputEl) {
+            const row = document.getElementById('cart-row-' + cartId);
+            if (!row) return;
+
+            const currentQty = parseInt(row.getAttribute('data-qty'), 10) || 1;
+            const raw = inputEl.value.replace(/[^0-9]/g, '');
+            setCartQty(cartId, raw === '' ? currentQty : raw, true);
+        }
+
+        async function setCartQty(cartId, rawQty, syncInput = true) {
+            clearTimeout(cartQtyTimers[cartId]);
+            const row = document.getElementById('cart-row-' + cartId);
+            if (!row) return;
+
             const maxStok = parseInt(row.getAttribute('data-max'), 10) || 1;
             const price = parseInt(row.getAttribute('data-price'), 10) || 0;
             const updateUrl = row.getAttribute('data-update-url');
 
-            const newQty = currentQty + delta;
-            if (newQty < 1 || newQty > maxStok) {
-                return;
-            }
+            let newQty = parseInt(rawQty, 10);
+            if (isNaN(newQty) || newQty < 1) newQty = 1;
+            if (newQty > maxStok) newQty = maxStok;
 
             row.setAttribute('data-qty', newQty);
-            row.querySelector('.cart-qty-display').textContent = newQty;
+            const inputEl = row.querySelector('.cart-qty-display');
+            if (inputEl && (syncInput || document.activeElement !== inputEl)) {
+                inputEl.value = newQty;
+            }
             row.querySelector('.cart-subtotal-display').textContent = formatRupiah(newQty * price);
             row.querySelector('.btn-qty-minus').disabled = newQty <= 1;
             row.querySelector('.btn-qty-plus').disabled = newQty >= maxStok;
@@ -282,10 +350,21 @@
                     body: JSON.stringify({ jumlah: newQty })
                 });
 
+                const data = await response.json().catch(() => ({}));
+
                 if (!response.ok) {
-                    const err = await response.json();
-                    if (err.message) alert(err.message);
+                    if (data.message) alert(data.message);
                     window.location.reload();
+                    return;
+                }
+
+                if (typeof data.cart_count === 'number') {
+                    document.querySelectorAll('[data-cart-count-badge]').forEach((badge) => {
+                        badge.textContent = data.cart_count > 0 ? String(data.cart_count) : '(0)';
+                    });
+                    document.querySelectorAll('[data-cart-count-text]').forEach((el) => {
+                        el.textContent = String(data.cart_count);
+                    });
                 }
             } catch (e) {
                 window.location.reload();

@@ -24,13 +24,13 @@
         @endif
     </a>
 
-    <a class="nav-pill-link {{ request()->routeIs('chat.*') ? 'active' : '' }}"
+    <!-- <a class="nav-pill-link {{ request()->routeIs('chat.*') ? 'active' : '' }}"
         href="{{ route('chat.index') }}">
         <i class="bi bi-chat-dots"></i> Chat Admin
         @if($unreadChatCount > 0)
             <span class="badge rounded-pill bg-danger ms-1" title="{{ $unreadChatCount }} pesan belum dibaca">{{ $unreadChatCount }}</span>
         @endif
-    </a>
+    </a> -->
 
     <a class="nav-pill-link {{ request()->routeIs('member.card') ? 'active' : '' }}"
         href="{{ route('member.card') }}">
@@ -46,11 +46,7 @@
 <div class="d-flex align-items-center justify-content-end gap-2 my-2 my-xl-0 flex-shrink-0">
     <a href="{{ route('cart.index') }}" class="btn btn-soft-primary btn-sm position-relative px-3" title="Keranjang Belanja">
         <i class="bi bi-cart3 me-1"></i> Keranjang
-        @if($cartCount > 0)
-            <span class="badge rounded-pill bg-danger ms-1">{{ $cartCount }}</span>
-        @else
-            <span class="text-slate-500 ms-1">(0)</span>
-        @endif
+        <span data-cart-count-badge class="{{ $cartCount > 0 ? 'badge rounded-pill bg-danger ms-1' : 'text-slate-500 ms-1' }}">{{ $cartCount > 0 ? $cartCount : '(0)' }}</span>
     </a>
 
     <div class="d-flex align-items-center gap-2 ps-2 border-start ms-1">

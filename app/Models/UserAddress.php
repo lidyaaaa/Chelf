@@ -25,6 +25,10 @@ class UserAddress extends Model
         ];
     }
 
+    /**
+     * Memastikan tabel 'user_addresses' sudah tersedia di database.
+     * Jika belum ada, dibuatkan secara otomatis agar fitur alamat pengiriman tidak error.
+     */
     public static function ensureTableExists(): void
     {
         if (! Schema::hasTable('user_addresses')) {
@@ -41,11 +45,18 @@ class UserAddress extends Model
         }
     }
 
+    /**
+     * Relasi alamat pengiriman dimiliki oleh satu User.
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Accessor ($address->formatted_address) untuk menyatukan label, nama penerima,
+     * nomor telepon, dan alamat lengkap menjadi satu teks siap cetak di struk transaksi.
+     */
     public function getFormattedAddressAttribute(): string
     {
         return sprintf(

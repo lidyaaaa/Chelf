@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 
 class AddressController extends Controller
 {
+    /**
+     * Menyimpan alamat pengiriman baru milik pelanggan.
+     * Jika ini adalah alamat pertama pelanggan, otomatis dijadikan alamat utama (is_utama = true).
+     */
     public function store(Request $request)
     {
         UserAddress::ensureTableExists();
@@ -33,9 +37,13 @@ class AddressController extends Controller
         return back()->with('success', 'Alamat pengiriman baru berhasil ditambahkan.');
     }
 
+    /**
+     * Mengubah data alamat pengiriman milik pelanggan.
+     */
     public function update(Request $request, UserAddress $address)
     {
         UserAddress::ensureTableExists();
+        // Pastikan alamat ini benar-benar milik pelanggan yang sedang login
         abort_unless($address->user_id === auth()->id(), 403);
 
         $data = $request->validate([
@@ -46,6 +54,7 @@ class AddressController extends Controller
             'is_utama' => 'nullable|boolean',
         ]);
 
+        // Jika dijadikan alamat utama, reset alamat lain milik user ini menjadi bukan utama
         if ($request->boolean('is_utama')) {
             UserAddress::where('user_id', auth()->id())->update(['is_utama' => false]);
         }
@@ -61,6 +70,9 @@ class AddressController extends Controller
         return back()->with('success', 'Alamat pengiriman berhasil diperbarui.');
     }
 
+    /**
+     * Menghapus alamat pengiriman tersimpan milik pelanggan.
+     */
     public function destroy(UserAddress $address)
     {
         UserAddress::ensureTableExists();
